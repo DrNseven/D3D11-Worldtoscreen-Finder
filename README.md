@@ -11,13 +11,13 @@ How to use:
 1. Edit universal.cpp and find models in your game, use the logger for that (press CTRL+ALT+L to toggle).
 
 Model recognition + wallhack example:
-if (Stride == 32)//models
+if (Stride == 32)
 {
 	..
 }
 
 2. Use the same model rec for worldtoscreen, example:
-if (Stride == 32)//models
+if (Stride == 32)
 {
 	AddModel(pContext, 1);
 }
