@@ -1,5 +1,68 @@
 //d3d11 w2s for ut4 engine games by n7
 
+//==========================================================================================================================
+
+//features
+int aimbot = 1;
+DWORD Daimkey = VK_RBUTTON;		//aimkey
+int aimfov = 3;					//aim field of view in % 
+int aimsens = 3;				//aim sensitivity, makes aim smoother
+int autoshoot = 0;				//autoshoot
+unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
+bool IsPressed = false;			//
+DWORD astime = timeGetTime();	//auto_shoot
+
+//init only once
+bool firstTime = true;
+
+//viewport
+UINT vps = 1;
+D3D11_VIEWPORT viewport;
+float ScreenCenterX;
+float ScreenCenterY;
+
+//vertex
+ID3D11Buffer *veBuffer;
+UINT Stride = 0;
+UINT veBufferOffset = 0;
+D3D11_BUFFER_DESC vedesc;
+
+//index
+ID3D11Buffer *inBuffer;
+DXGI_FORMAT inFormat;
+UINT        inOffset;
+D3D11_BUFFER_DESC indesc;
+
+//rendertarget
+ID3D11Texture2D* RenderTargetTexture;
+ID3D11RenderTargetView* RenderTargetView = NULL;
+
+//shader
+ID3D11PixelShader* psRed = NULL;
+ID3D11PixelShader* psGreen = NULL;
+
+//pssetshaderresources
+UINT pssrStartSlot;
+D3D11_SHADER_RESOURCE_VIEW_DESC  Descr;
+ID3D11ShaderResourceView* ShaderResourceView;
+
+//psgetConstantbuffers
+ID3D11Buffer *pcsBuffer;
+D3D11_BUFFER_DESC pscdesc;
+UINT pscStartSlot;
+
+//vsgetconstantbuffers
+UINT vsConstant_StartSlot;
+
+//used for logging/cycling through values
+bool logger = false;
+int countnum = -1;
+char szString[64];
+
+#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
+
+//==========================================================================================================================
+
 //get dir
 using namespace std;
 #include <fstream>
@@ -27,9 +90,6 @@ void Log(const char *fmt, ...)
 	if (logfile.is_open() && text)	logfile << text << endl;
 	logfile.close();
 }
-
-int countnum = -1;
-#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
 
 //==========================================================================================================================
 
@@ -178,14 +238,6 @@ void UnmapBuffer(ID3D11Buffer* pStageBuffer)
 	pContext->Unmap(pStageBuffer, 0);
 }
 
-struct AimEspInfo_t
-{
-	float vOutX, vOutY;
-	INT       iTeam;
-	float CrosshairDst;
-};
-std::vector<AimEspInfo_t>AimEspInfo;
-
 ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 {
 	D3D11_BUFFER_DESC CBDesc;
@@ -214,12 +266,26 @@ ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 	return pStageBuffer;
 }
 
+//get distance
+float GetmDst(float Xx, float Yy, float xX, float yY)
+{
+	return sqrt((yY - Yy) * (yY - Yy) + (xX - Xx) * (xX - Xx));
+}
+
+struct AimEspInfo_t
+{
+	float vOutX, vOutY;
+	INT       iTeam;
+	float CrosshairDst;
+};
+std::vector<AimEspInfo_t>AimEspInfo;
+
 //w2s
 Vec4 vWorldView;
 Vec4 vClip;
-int ObjectCBnum = 1;
+int ObjectCBnum = 2;
 int FrameCBnum = 1;
-int matProjnum = 1;
+int matProjnum = 16;
 
 //Game			ObjectCBnum		FrameCBnum		matProjnum
 //UT4 Alpha		2				1				16
@@ -227,35 +293,7 @@ int matProjnum = 1;
 //Overwatch		7				9				0			(untested)
 void AddModel(ID3D11DeviceContext* pContext, int iTeam)
 {
-	//bruteforce ObjectCBnum
-	if (GetAsyncKeyState('Z') & 1) //-
-		ObjectCBnum--;
-	if (GetAsyncKeyState('U') & 1) //+
-		ObjectCBnum++;
-	if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
-		ObjectCBnum = 0;
-	if (ObjectCBnum < 0)
-		ObjectCBnum = 0;
-
-	//bruteforce FrameCBnum
-	if (GetAsyncKeyState('H') & 1) //-
-		FrameCBnum--;
-	if (GetAsyncKeyState('J') & 1) //+
-		FrameCBnum++;
-	if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
-		FrameCBnum = 0;
-	if (FrameCBnum < 0)
-		FrameCBnum = 0;
-
-	//bruteforce matProjnum
-	if (GetAsyncKeyState('N') & 1) //-
-		matProjnum--;
-	if (GetAsyncKeyState('M') & 1) //+
-		matProjnum++;
-	if (GetAsyncKeyState(0x39) & 1) //9 reset, set to 0
-		matProjnum = 0;
-	if (matProjnum < 0)
-		matProjnum = 0;
+	//Warning, this is NOT optimized:
 
 	ID3D11Buffer* pObjectCB;
 	ID3D11Buffer* m_pCurObjectCB;
@@ -296,7 +334,7 @@ void AddModel(ID3D11DeviceContext* pContext, int iTeam)
 		{
 			float* pFrameCB;
 			MapBuffer(m_pCurFrameCB, (void**)&pFrameCB, NULL);
-			memcpy(matProj, &pFrameCB[matProjnum], sizeof(matProj));//16! pFrameCB[countnum]
+			memcpy(matProj, &pFrameCB[matProjnum], sizeof(matProj));//16works (UT4)
 			//matProj[0][3] = 0;
 			UnmapBuffer(m_pCurFrameCB);
 		}
@@ -313,20 +351,15 @@ void AddModel(ID3D11DeviceContext* pContext, int iTeam)
 
 
 	Vec2 o;
-	UINT vps = 1;
-	D3D11_VIEWPORT viewport;
-	pContext->RSGetViewports(&vps, &viewport);
-	float VWidth = viewport.Width / 2.0f;
-	float VHeight = viewport.Height / 2.0f;
 	
 	//o.x = ((vClip.x / vClip.w) * (viewport.Width / 2.0f)) + viewport.TopLeftX + (viewport.Width / 2.0f);
 	//o.y = viewport.TopLeftY + (viewport.Height / 2.0f) - ((vClip.y / vClip.w) * (viewport.Height / 2.0f));
 
-	//o.x = VWidth * (1 + (vClip.x / VWidth / vClip.z));
-	//o.y = VHeight * (1 - (vClip.y / VHeight / vClip.z));
+	//o.x = ScreenCenterX * (1 + (vClip.x / ScreenCenterX / vClip.z));
+	//o.y = ScreenCenterY * (1 - (vClip.y / ScreenCenterY / vClip.z));
 
-	o.x = VWidth + VWidth * (vClip.x / vClip.w);
-	o.y = VHeight + VHeight * -(vClip.y / vClip.w);
+	o.x = ScreenCenterX + ScreenCenterX * (vClip.x / vClip.w);
+	o.y = ScreenCenterY + ScreenCenterY * -(vClip.y / vClip.w);
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y), iTeam };
 	AimEspInfo.push_back(pAimEspInfo);

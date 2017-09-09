@@ -8,6 +8,7 @@
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 
+#pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
 
@@ -46,49 +47,6 @@ IFW1Factory *pFW1Factory = NULL;
 IFW1FontWrapper *pFontWrapper = NULL;
 
 #include "main.h"
-
-//==========================================================================================================================
-
-//init only once
-bool firstTime = true;
-
-//vertex
-ID3D11Buffer *veBuffer;
-UINT Stride = 0;
-UINT veBufferOffset = 0;
-D3D11_BUFFER_DESC vedesc;
-
-//index
-ID3D11Buffer *inBuffer;
-DXGI_FORMAT inFormat;
-UINT        inOffset;
-D3D11_BUFFER_DESC indesc;
-
-//rendertarget
-ID3D11Texture2D* RenderTargetTexture;
-ID3D11RenderTargetView* RenderTargetView = NULL;
-
-//shader
-ID3D11PixelShader* psRed = NULL;
-ID3D11PixelShader* psGreen = NULL;
-
-//pssetshaderresources
-UINT pssrStartSlot;
-D3D11_SHADER_RESOURCE_VIEW_DESC  Descr;
-ID3D11ShaderResourceView* ShaderResourceView;
-
-//psgetConstantbuffers
-ID3D11Buffer *pcsBuffer;
-D3D11_BUFFER_DESC pscdesc;
-UINT pscStartSlot;
-
-
-//vsgetconstantbuffers
-UINT vsConstant_StartSlot;
-
-//used for logging/cycling through values
-bool logger = false;
-char szString[64];
 
 //==========================================================================================================================
 
@@ -185,6 +143,11 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		firstTime = false;
 	}
 
+	//viewport
+	pContext->RSGetViewports(&vps, &viewport);
+	ScreenCenterX = viewport.Width / 2.0f;
+	ScreenCenterY = viewport.Height / 2.0f;
+
 	//shaders
 	if (!psRed)
 	GenerateShader(pDevice, &psRed, 1.0f, 0.0f, 0.0f);
@@ -205,19 +168,124 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
 		{
 			//text esp
-			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1)
+			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX < viewport.Width && AimEspInfo[i].vOutY < viewport.Height)
 			{
-				pFontWrapper->DrawString(pContext, L"Enemy", 14, (int)AimEspInfo[i].vOutX, (int)AimEspInfo[i].vOutY, 0xFFFF9999, FW1_RESTORESTATE);
+				pFontWrapper->DrawString(pContext, L"Enemy", 14, (int)AimEspInfo[i].vOutX, (int)AimEspInfo[i].vOutY, 0xFFFFFFFF, FW1_RESTORESTATE);
+			}
+		}
+	}
+	//AimEspInfo.clear();
+
+	//aimbot
+	if (aimbot == 1 && AimEspInfo.size() != NULL && GetAsyncKeyState(Daimkey) & 0x8000)//warning: GetAsyncKeyState here will cause aimbot not to work for a few people
+	//if (aimbot == 1 && AimEspInfo.size() != NULL)
+	{
+		UINT BestTarget = -1;
+		DOUBLE fClosestPos = 99999;
+
+		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
+		{
+			//aimfov
+			float radiusx = (aimfov*10.0f) * (ScreenCenterX / 100.0f);
+			float radiusy = (aimfov*10.0f) * (ScreenCenterY / 100.0f);
+
+			if (aimfov == 0)
+			{
+				radiusx = 5.0f * (ScreenCenterX / 100.0f);
+				radiusy = 5.0f * (ScreenCenterY / 100.0f);
+			}
+
+			//get crosshairdistance
+			AimEspInfo[i].CrosshairDst = GetmDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ScreenCenterX, ScreenCenterY);
+
+			//aim at team 1 or 2 (not needed)
+			//if (aimbot == AimEspInfo[i].iTeam)
+
+			//if in fov
+			if (AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
+
+				//get closest/nearest target to crosshair
+				if (AimEspInfo[i].CrosshairDst < fClosestPos)
+				{
+					fClosestPos = AimEspInfo[i].CrosshairDst;
+					BestTarget = i;
+				}
+		}
+
+
+		//if nearest target to crosshair
+		if (BestTarget != -1)
+		{
+			double DistX = AimEspInfo[BestTarget].vOutX - ScreenCenterX;
+			double DistY = AimEspInfo[BestTarget].vOutY - ScreenCenterY;
+
+			DistX /= (1 + aimsens);
+			DistY /= (1 + aimsens);
+
+			//aim
+			mouse_event(MOUSEEVENTF_MOVE, (float)DistX, (float)DistY, 0, NULL);
+
+			//autoshoot on
+			if ((!GetAsyncKeyState(VK_LBUTTON) && (autoshoot == 1))) //
+			//if ((!GetAsyncKeyState(VK_LBUTTON) && (autoshoot == 1) && (GetAsyncKeyState(Daimkey) & 0x8000))) //
+			{
+				if (autoshoot == 1 && !IsPressed)
+				{
+					mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+					//LLeftClickDown();
+					IsPressed = true;
+				}
 			}
 		}
 	}
 	AimEspInfo.clear();
+
+	//autoshoot off
+	if (autoshoot == 1 && IsPressed)
+	{
+		if (timeGetTime() - astime >= asdelay)
+		{
+			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+			IsPressed = false;
+			astime = timeGetTime();
+		}
+	}
 
 	//logger
 	if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState(VK_CONTROL)) && (GetAsyncKeyState(0x4C) & 1)) //ALT + CTRL + L toggles logger
 		logger = !logger;
 	if (logger && pFontWrapper) //&& countnum >= 0)
 	{
+		//bruteforce ObjectCBnum
+		if (GetAsyncKeyState('Z') & 1) //-
+			ObjectCBnum--;
+		if (GetAsyncKeyState('U') & 1) //+
+			ObjectCBnum++;
+		if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
+			ObjectCBnum = 0;
+		if (ObjectCBnum < 0)
+			ObjectCBnum = 0;
+
+		//bruteforce FrameCBnum
+		if (GetAsyncKeyState('H') & 1) //-
+			FrameCBnum--;
+		if (GetAsyncKeyState('J') & 1) //+
+			FrameCBnum++;
+		if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
+			FrameCBnum = 0;
+		if (FrameCBnum < 0)
+			FrameCBnum = 0;
+
+		//bruteforce matProjnum
+		if (GetAsyncKeyState('N') & 1) //-
+			matProjnum--;
+		if (GetAsyncKeyState('M') & 1) //+
+			matProjnum++;
+		if (GetAsyncKeyState(0x39) & 1) //9 reset, set to 0
+			matProjnum = 0;
+		if (matProjnum < 0)
+			matProjnum = 0;
+
 		//call before you draw
 		//pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 		wchar_t reportValue[256];
@@ -271,9 +339,9 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//if (Stride == 32 && IndexCount != 6)//rising storm 2
 	{
 		SetDepthStencilState(DISABLED);
-		//pContext->PSSetShader(psRed, NULL, NULL);
+		pContext->PSSetShader(psRed, NULL, NULL);
 		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
-		//pContext->PSSetShader(psGreen, NULL, NULL);
+		pContext->PSSetShader(psGreen, NULL, NULL);
 		SetDepthStencilState(READ_NO_WRITE);
 	}
 
@@ -384,7 +452,6 @@ void __stdcall hookD3D11CreateQuery(ID3D11Device* pDevice, const D3D11_QUERY_DES
 
 	return phookD3D11CreateQuery(pDevice, pQueryDesc, ppQuery);
 }
-
 
 //==========================================================================================================================
 
