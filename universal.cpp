@@ -23,12 +23,7 @@ typedef void(__stdcall *D3D11DrawIndexedInstancedIndirectHook) (ID3D11DeviceCont
 typedef void(__stdcall *D3D11PSSetShaderResourcesHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 typedef void(__stdcall *D3D11CreateQueryHook) (ID3D11Device* pDevice, const D3D11_QUERY_DESC *pQueryDesc, ID3D11Query **ppQuery);
 typedef void(__stdcall *D3D11VSSetConstantBuffersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppConstantBuffers);
-typedef void(__stdcall *D3D11ClearRenderTargetViewHook) (ID3D11DeviceContext* pContext, ID3D11RenderTargetView *pRenderTargetView, const FLOAT ColorRGBA[4]);
-typedef void(__stdcall *D3D11RSSetViewportsHook) (ID3D11DeviceContext* pContext, UINT NumViewports, const D3D11_VIEWPORT *pViewports);
-typedef void(__stdcall *D3D11GSSetConstantBuffersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppConstantBuffers);
-typedef void(__stdcall *D3D11PSSetShaderHook) (ID3D11DeviceContext* pContext, ID3D11PixelShader *pPixelShader, ID3D11ClassInstance *const *ppClassInstances, UINT NumClassInstances);
 typedef void(__stdcall *D3D11PSSetSamplersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumSamplers, ID3D11SamplerState *const *ppSamplers);
-typedef void(__stdcall *D3D11VSSetShaderHook) (ID3D11DeviceContext* pContext, ID3D11VertexShader *pVertexShader, ID3D11ClassInstance *const *ppClassInstances, UINT NumClassInstances);
 
 
 D3D11PresentHook phookD3D11Present = NULL;
@@ -41,12 +36,7 @@ D3D11DrawIndexedInstancedIndirectHook phookD3D11DrawIndexedInstancedIndirect = N
 D3D11PSSetShaderResourcesHook phookD3D11PSSetShaderResources = NULL;
 D3D11CreateQueryHook phookD3D11CreateQuery = NULL;
 D3D11VSSetConstantBuffersHook phookD3D11VSSetConstantBuffers = NULL;
-D3D11ClearRenderTargetViewHook phookD3D11ClearRenderTargetView = NULL;
-D3D11RSSetViewportsHook phookD3D11RSSetViewports = NULL;
-D3D11GSSetConstantBuffersHook phookD3D11GSSetConstantBuffers = NULL;
-D3D11PSSetShaderHook phookD3D11PSSetShader = NULL;
 D3D11PSSetSamplersHook phookD3D11PSSetSamplers = NULL;
-D3D11VSSetShaderHook phookD3D11VSSetShader = NULL;
 
 ID3D11Device *pDevice = NULL;
 ID3D11DeviceContext *pContext = NULL;
