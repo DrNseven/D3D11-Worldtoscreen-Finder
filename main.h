@@ -7,7 +7,7 @@ int aimbot = 1;
 DWORD Daimkey = VK_RBUTTON;		//aimkey
 int aimfov = 3;					//aim field of view in % 
 int aimsens = 3;				//aim sensitivity, makes aim smoother
-int aimheight = 300;			//aim height value, low value = aims lower, high values aims heigher
+int aimheight = 200;			//aim height value, low value = aims lower, high values aims heigher
 int autoshoot = 0;				//autoshoot
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
@@ -53,12 +53,15 @@ D3D11_BUFFER_DESC pscdesc;
 UINT pscStartSlot;
 
 //vsgetconstantbuffers
+ID3D11Buffer *mConstantBuffers;
 UINT vsConstant_StartSlot;
 
 //used for logging/cycling through values
 bool logger = false;
 int countnum = -1;
 char szString[64];
+
+UINT psStartSlot;
 
 #define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
 
@@ -173,36 +176,41 @@ struct Vec4
 	float x, y, z, w;
 };
 
-/*
-//csgo, paladins style
-static Vec4 Vec4MulMat4x4Test(const Vec4& v, float(*mat4x4)[4])
-{
-	Vec4 o;
-	o.x = mat4x4[0][0] * o.x + mat4x4[0][1] * o.y + mat4x4[0][2] * o.z + mat4x4[0][3];
-	o.y = mat4x4[1][0] * o.x + mat4x4[1][1] * o.y + mat4x4[1][2] * o.z + mat4x4[1][3];
-	o.z = mat4x4[2][0] * o.x + mat4x4[2][1] * o.y + mat4x4[2][2] * o.z + mat4x4[2][3];
-	o.w = mat4x4[3][0] * o.x + mat4x4[3][1] * o.y + mat4x4[3][2] * o.z + mat4x4[3][3];
-	return o;
-}
-*/
-
 static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 {
+	//inv
 	Vec4 o;
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1] + aimheight;
+	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1] +aimheight;
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
+
+	/*
+	//normal?
+	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[0][1] + v.z * mat4x4[0][2] + v.w * mat4x4[0][3];
+	o.y = v.x * mat4x4[1][0] + v.y * mat4x4[1][1] + v.z * mat4x4[1][2] + v.w * mat4x4[1][3];
+	o.z = v.x * mat4x4[2][0] + v.y * mat4x4[2][1] + v.z * mat4x4[2][2] + v.w * mat4x4[2][3];
+	o.w = v.x * mat4x4[3][0] + v.y * mat4x4[3][1] + v.z * mat4x4[3][2] + v.w * mat4x4[3][3];
+	*/
 	return o;
 }
 
 static Vec4 Vec3MulMat4x4(const Vec3& v, float(*mat4x4)[4])
 {
+	//inv
 	Vec4 o;
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + mat4x4[3][0];
 	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + mat4x4[3][1];
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + mat4x4[3][3];
+
+	/*
+	//normal?
+	o.x = mat4x4[0][0] * v.x + mat4x4[0][1] * v.y + mat4x4[0][2] * v.z + mat4x4[0][3];
+	o.y = mat4x4[1][0] * v.x + mat4x4[1][1] * v.y + mat4x4[1][2] * v.z + mat4x4[1][3];
+	o.z = mat4x4[2][0] * v.x + mat4x4[2][1] * v.y + mat4x4[2][2] * v.z + mat4x4[2][3];
+	o.w = mat4x4[3][0] * v.x + mat4x4[3][1] * v.y + mat4x4[3][2] * v.z + mat4x4[3][3];
+	*/
 	return o;
 }
 
@@ -245,8 +253,7 @@ ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 	pBuffer->GetDesc(&CBDesc);
 
 	ID3D11Buffer* pStageBuffer = NULL;
-	{ 
-		//create shadow buffer
+	{ // create shadow buffer.
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = 0;
 		desc.ByteWidth = CBDesc.ByteWidth;
@@ -257,7 +264,7 @@ ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 
 		if (FAILED(pDevice->CreateBuffer(&desc, NULL, &pStageBuffer)))
 		{
-			Log("CreateBuffer failed when CopyBufferToCpu == %d", CBDesc.ByteWidth);
+			Log("CreateBuffer failed when CopyBufferToCpu {%d}", CBDesc.ByteWidth);
 		}
 	}
 
@@ -276,40 +283,47 @@ float GetmDst(float Xx, float Yy, float xX, float yY)
 struct AimEspInfo_t
 {
 	float vOutX, vOutY;
-	INT       iTeam;
+	//INT       iTeam;
 	float CrosshairDst;
 };
 std::vector<AimEspInfo_t>AimEspInfo;
 
 //w2s
-Vec4 vWorldView;
-Vec4 vClip;
 int ObjectCBnum = 2;
 int FrameCBnum = 1;
 int matProjnum = 16;
 
 //Game			ObjectCBnum		FrameCBnum		matProjnum
 //UT4 Alpha		2				1				16
-//Outlast		0				1				0 and 16
+//Outlast 		0				1				0 and 16
 //Overwatch		7				9				0			(untested)
-void AddModel(ID3D11DeviceContext* pContext, int iTeam)
+ID3D11Buffer* pObjectCB = nullptr;
+ID3D11Buffer* pFrameCB = nullptr;
+Vec4 vWorldView;
+Vec4 vClip;
+
+void AddModel(ID3D11DeviceContext* pContext)
 {
 	//Warning, this is NOT optimized:
 
-	ID3D11Buffer* pObjectCB;
-	ID3D11Buffer* m_pCurObjectCB;
 	pContext->VSGetConstantBuffers(ObjectCBnum, 1, &pObjectCB);//2works (UT4)
+
+	pContext->VSGetConstantBuffers(FrameCBnum, 1, &pFrameCB);//1works (UT4)
+
 
 	if (pObjectCB != NULL)
 	{
+		ID3D11Buffer* m_pCurObjectCB;
 		m_pCurObjectCB = CopyBufferToCpu(pObjectCB);
+		SAFE_RELEASE(pObjectCB);
 
 		float matWorldView[4][4];
 		{
 			float* pObjectCB;
-			MapBuffer(m_pCurObjectCB, (void**)&pObjectCB, NULL);
+			MapBuffer(m_pCurObjectCB, (void**)&pObjectCB, NULL);//Warning, this will reduce fps, call in present?
 			memcpy(matWorldView, &pObjectCB[0], sizeof(matWorldView));
 			UnmapBuffer(m_pCurObjectCB);
+			SAFE_RELEASE(m_pCurObjectCB);
 		}
 		Vec3 v;
 		vWorldView = Vec3MulMat4x4(v, matWorldView);//
@@ -321,25 +335,25 @@ void AddModel(ID3D11DeviceContext* pContext, int iTeam)
 			SAFE_RELEASE(pObjectCB);
 		return;
 	}
-	//SAFE_RELEASE(pObjectCB);
 
 
-	ID3D11Buffer* pFrameCB;
-	ID3D11Buffer* m_pCurFrameCB;
-	pContext->VSGetConstantBuffers(FrameCBnum, 1, &pFrameCB);//1works (UT4)
 	if (pFrameCB != NULL)
 	{
+		ID3D11Buffer* m_pCurFrameCB;
 		m_pCurFrameCB = CopyBufferToCpu(pFrameCB);
+		SAFE_RELEASE(pFrameCB);
 
 		float matProj[4][4];
 		{
 			float* pFrameCB;
-			MapBuffer(m_pCurFrameCB, (void**)&pFrameCB, NULL);
+			MapBuffer(m_pCurFrameCB, (void**)&pFrameCB, NULL);//Warning, this will reduce fps, call in present?
 			memcpy(matProj, &pFrameCB[matProjnum], sizeof(matProj));//16works (UT4)
-			//matProj[0][3] = 0;
 			UnmapBuffer(m_pCurFrameCB);
+			SAFE_RELEASE(m_pCurFrameCB);
 		}
 		vClip = Vec4MulMat4x4(vWorldView, matProj);//
+
+
 	}
 	else
 	{
@@ -348,20 +362,76 @@ void AddModel(ID3D11DeviceContext* pContext, int iTeam)
 			SAFE_RELEASE(pFrameCB);
 		return;
 	}
-	//SAFE_RELEASE(pFrameCB);
 
 
 	Vec2 o;
-	
-	//o.x = ((vClip.x / vClip.w) * (viewport.Width / 2.0f)) + viewport.TopLeftX + (viewport.Width / 2.0f);
-	//o.y = viewport.TopLeftY + (viewport.Height / 2.0f) - ((vClip.y / vClip.w) * (viewport.Height / 2.0f));
-
-	//o.x = ScreenCenterX * (1 + (vClip.x / ScreenCenterX / vClip.z));
-	//o.y = ScreenCenterY * (1 - (vClip.y / ScreenCenterY / vClip.z));
-
 	o.x = ScreenCenterX + ScreenCenterX * (vClip.x / vClip.w);
 	o.y = ScreenCenterY + ScreenCenterY * -(vClip.y / vClip.w);
 
-	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y), iTeam };
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
 }
+/*
+void TransformToScreenSpace(ID3D11DeviceContext* pContext)
+{
+	if (pObjectCB != NULL)
+	{
+		ID3D11Buffer* m_pCurObjectCB;
+		m_pCurObjectCB = CopyBufferToCpu(pObjectCB);
+		SAFE_RELEASE(pObjectCB);
+
+		float matWorldView[4][4];
+		{
+			float* pObjectCB;
+			MapBuffer(m_pCurObjectCB, (void**)&pObjectCB, NULL);
+			memcpy(matWorldView, &pObjectCB[0], sizeof(matWorldView));
+			UnmapBuffer(m_pCurObjectCB);
+			SAFE_RELEASE(m_pCurObjectCB);
+		}
+		Vec3 v;
+		vWorldView = Vec3MulMat4x4(v, matWorldView);//
+	}
+	else
+	{
+		Log("Object CB is not set == %x", (void*)pObjectCB);
+		if (pObjectCB == NULL)
+			SAFE_RELEASE(pObjectCB);
+		return;
+	}
+
+
+	if (pFrameCB != NULL)
+	{
+		ID3D11Buffer* m_pCurFrameCB;
+		m_pCurFrameCB = CopyBufferToCpu(pFrameCB);
+		SAFE_RELEASE(pFrameCB);
+
+		float matProj[4][4];
+		{
+			float* pFrameCB;
+			MapBuffer(m_pCurFrameCB, (void**)&pFrameCB, NULL);
+			memcpy(matProj, &pFrameCB[matProjnum], sizeof(matProj));//16works (UT4)
+			UnmapBuffer(m_pCurFrameCB);
+			SAFE_RELEASE(m_pCurFrameCB);
+		}
+		vClip = Vec4MulMat4x4(vWorldView, matProj);//
+
+
+	}
+	else
+	{
+		Log("Frame CB is not set == %x", (void*)pFrameCB);
+		if (pFrameCB != NULL)
+			SAFE_RELEASE(pFrameCB);
+		return;
+	}
+
+
+	Vec2 o;
+	o.x = ScreenCenterX + ScreenCenterX * (vClip.x / vClip.w);
+	o.y = ScreenCenterY + ScreenCenterY * -(vClip.y / vClip.w);
+
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
+	AimEspInfo.push_back(pAimEspInfo);
+}
+*/
