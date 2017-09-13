@@ -19,7 +19,7 @@ if (Stride == xx && ..)
 
 if (Stride == xx && ..)
 {
-	AddModel(pContext, 1);
+	AddModel(pContext);
 }
 
 3. Bruteforce pWorldViewCBCBnum, pProjCBnum & matProjnum, press CTRL+ALT+L and use the displayed keys. If you have found the right values the word "Enemy" will be displayed on models position.
