@@ -8,6 +8,17 @@
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 
+#include "DXSDK\d3dx9.h" //D3DXMATRIX
+#include "DXSDK\d3dx11.h" //
+#include "DXSDK\D3DX11async.h"
+#if defined _M_X64
+#pragma comment(lib, "DXSDK/x64/d3dx9.lib")
+#pragma comment(lib, "DXSDK/x64/d3dx11.lib") 
+#elif defined _M_IX86
+#pragma comment(lib, "DXSDK/x86/d3dx9.lib")
+#pragma comment(lib, "DXSDK/x86/d3dx11.lib")
+#endif
+
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
@@ -267,25 +278,25 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		logger = !logger;
 	if (logger && pFontWrapper) //&& countnum >= 0)
 	{
-		//bruteforce ObjectCBnum
+		//bruteforce WorldViewCBnum
 		if (GetAsyncKeyState('Z') & 1) //-
-			ObjectCBnum--;
+			WorldViewCBnum--;
 		if (GetAsyncKeyState('U') & 1) //+
-			ObjectCBnum++;
+			WorldViewCBnum++;
 		if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
-			ObjectCBnum = 0;
-		if (ObjectCBnum < 0)
-			ObjectCBnum = 0;
+			WorldViewCBnum = 0;
+		if (WorldViewCBnum < 0)
+			WorldViewCBnum = 0;
 
-		//bruteforce FrameCBnum
+		//bruteforce ProjCBnum
 		if (GetAsyncKeyState('H') & 1) //-
-			FrameCBnum--;
+			ProjCBnum--;
 		if (GetAsyncKeyState('J') & 1) //+
-			FrameCBnum++;
+			ProjCBnum++;
 		if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
-			FrameCBnum = 0;
-		if (FrameCBnum < 0)
-			FrameCBnum = 0;
+			ProjCBnum = 0;
+		if (ProjCBnum < 0)
+			ProjCBnum = 0;
 
 		//bruteforce matProjnum
 		if (GetAsyncKeyState('N') & 1) //-
@@ -304,11 +315,11 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		pFontWrapper->DrawString(pContext, reportValue, 20.0f, 220.0f, 100.0f, 0xffffffff, FW1_RESTORESTATE);
 
 		wchar_t reportValueA[256];
-		swprintf_s(reportValueA, L"(Keys:-Z U+) ObjectCBnum = %d", ObjectCBnum);
+		swprintf_s(reportValueA, L"(Keys:-Z U+) WorldViewCBnum = %d", WorldViewCBnum);
 		pFontWrapper->DrawString(pContext, reportValueA, 20.0f, 220.0f, 120.0f, 0xffffffff, FW1_RESTORESTATE);
 
 		wchar_t reportValueB[256];
-		swprintf_s(reportValueB, L"(Keys:-H J+) FrameCBnum = %d", FrameCBnum);
+		swprintf_s(reportValueB, L"(Keys:-H J+) ProjCBnum = %d", ProjCBnum);
 		pFontWrapper->DrawString(pContext, reportValueB, 20.0f, 220.0f, 140.0f, 0xffffffff, FW1_RESTORESTATE);
 
 		wchar_t reportValueC[256];
@@ -344,7 +355,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	if (inBuffer != NULL) { inBuffer->Release(); inBuffer = NULL; }
 	
 	//wallhack/chams
-	if(Stride == 40||Stride == 44)//ut4 models (incomplete)
+	if (Stride == countnum)
+	//if(Stride == 40||Stride == 44)//ut4 models (incomplete)
 	//if(Stride == 8 && IndexCount == 600)// && indesc.ByteWidth == 24912 && vedesc.ByteWidth == 24912)//quake yellow ball in tutorial (hybrid engine made up of id tech and saber tech)
 	//if (Stride == 32 && Descr.Format == 49)//outlast (ut4 engine)
 	//if (Stride == 32 && IndexCount != 6)//rising storm 2 (ut3 engine)
@@ -357,7 +369,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	}
 
 	//w2s (Warning, the worse model rec, the more fps loss)
-	if ((Stride == 40 || Stride == 44)&&(psStartSlot > 1))//ut4 models (incomplete)
+	if (Stride == countnum)
+	//if ((Stride == 40 || Stride == 44)&&(psStartSlot > 1))//ut4 models (incomplete)
 	//if(Stride == 8 && IndexCount == 600)// && indesc.ByteWidth == 24912 && vedesc.ByteWidth == 24912)//quake yellow ball in tutorial (hybrid engine made up of id tech and saber tech)
 	//if (Stride == 32 && Descr.Format == 49)//outlast (ut4 engine)
 	//if (Stride == 32 && IndexCount != 6)//rising storm 2 (ut3 engine)
@@ -387,11 +400,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		{
 			SetDepthStencilState(DISABLED);
 			//pContext->RSSetState(rwState);    //wireframe
-			//pContext->PSSetShader(psRed, NULL, NULL);
+			pContext->PSSetShader(psRed, NULL, NULL);
 			phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
 			SetDepthStencilState(READ_NO_WRITE);
 			//pContext->RSSetState(rsState);    //solid
-			//pContext->PSSetShader(psGreen, NULL, NULL);
+			pContext->PSSetShader(psGreen, NULL, NULL);
 		}
 	}
 	
