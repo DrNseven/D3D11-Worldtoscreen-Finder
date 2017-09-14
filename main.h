@@ -314,6 +314,17 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//1works (UT4)				//proj
 
+	if (pWorldViewCB == NULL)
+	{
+		SAFE_RELEASE(pWorldViewCB);
+		return;
+	}
+
+	if (pProjCB == NULL)
+	{
+		SAFE_RELEASE(pProjCB);
+		return;
+	}
 
 	//WORLDVIEW
 	if(pWorldViewCB != NULL)
