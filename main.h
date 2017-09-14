@@ -5,13 +5,13 @@
 //features
 int aimbot = 1;
 DWORD Daimkey = VK_RBUTTON;		//aimkey
-int aimfov = 3;					//aim field of view in % 
-int aimsens = 3;				//aim sensitivity, makes aim smoother
+int aimfov = 3;				//aim field of view in % 
+int aimsens = 3;			//aim sensitivity, makes aim smoother
 int aimheight = 200;			//aim height value, low value = aims lower, high values aims heigher
-int autoshoot = 0;				//autoshoot
+int autoshoot = 0;			//autoshoot
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
-DWORD astime = timeGetTime();	//auto_shoot
+DWORD astime = timeGetTime();		//auto_shoot
 
 //init only once
 bool firstTime = true;
@@ -182,7 +182,7 @@ static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 	
 	//inv
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1] +aimheight;
+	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];//+aimheight;
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
 	
@@ -296,10 +296,10 @@ int ProjCBnum = 1;
 int matProjnum = 16;
 
 //Game			WorldViewCBnum		ProjCBnum		matProjnum
-//UT4 Alpha		2				1				16			(4=world, 2=view, 1=proj, 16=proj[xx])
-//Outlast 		0				1				0 and 16
-//Overwatch		7				9				0			(untested)
-//1 11 0 q
+//UT4 Alpha		2			1			16		(4=world, 2=view, 1=proj, 16=proj[xx])
+//Outlast 		0			1			0 and 16
+//Overwatch		7			9			0		(untested)
+//Warframe		0			0			0 or 4
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB;
