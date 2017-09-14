@@ -8,17 +8,6 @@
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 
-#include "DXSDK\d3dx9.h" //D3DXMATRIX
-#include "DXSDK\d3dx11.h" //
-#include "DXSDK\D3DX11async.h"
-#if defined _M_X64
-#pragma comment(lib, "DXSDK/x64/d3dx9.lib")
-#pragma comment(lib, "DXSDK/x64/d3dx11.lib") 
-#elif defined _M_IX86
-#pragma comment(lib, "DXSDK/x86/d3dx9.lib")
-#pragma comment(lib, "DXSDK/x86/d3dx11.lib")
-#endif
-
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
@@ -161,7 +150,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	ScreenCenterX = viewport.Width / 2.0f;
 	ScreenCenterY = viewport.Height / 2.0f;
 
-	//if (pObjectCB != NULL && pFrameCB != NULL)
+	//if (pWorldViewCB != NULL && pProjCB != NULL)
 	//{
 		//TransformToScreenSpace(pContext);
 	//}
@@ -392,11 +381,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			countnum++;
 		if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState('9') & 1)) //reset, set to -1
 			countnum = -1;
-		if (countnum == Stride)//indesc.ByteWidth / 1000)
+		if (countnum == IndexCount / 100)
 			if (GetAsyncKeyState('I') & 1)
 				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth);//vsConstant_StartSlot
 			
-		if (countnum == Stride)//indesc.ByteWidth / 1000)
+		if (countnum == IndexCount / 100)
 		{
 			SetDepthStencilState(DISABLED);
 			//pContext->RSSetState(rwState);    //wireframe

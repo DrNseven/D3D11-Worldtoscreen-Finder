@@ -182,7 +182,7 @@ static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 	
 	//inv
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];//+aimheight;
+	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1] +aimheight;
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
 	
@@ -295,18 +295,15 @@ int WorldViewCBnum = 2;
 int ProjCBnum = 1;
 int matProjnum = 16;
 
-//Game			ObjectCBnum		FrameCBnum		matProjnum
+//Game			WorldViewCBnum		ProjCBnum		matProjnum
 //UT4 Alpha		2				1				16			(4=world, 2=view, 1=proj, 16=proj[xx])
 //Outlast 		0				1				0 and 16
 //Overwatch		7				9				0			(untested)
 //1 11 0 q
-ID3D11Buffer* pWorldCB = nullptr;
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
-Vec4 vWorld;
-Vec4 vWorldView;
-Vec4 vWorldViewProj;
-
+ID3D11Buffer* m_pCurWorldViewCB;
+ID3D11Buffer* m_pCurProjCB;
 void AddModel(ID3D11DeviceContext* pContext)
 {
 	//Warning, this is NOT optimized:
@@ -317,93 +314,43 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//1works (UT4)				//proj
 
-	/*
-	//WORLD (not needed in UT4)
-	float matWorld[4][4];
-	if (pWorldCB != NULL)
-	{
-		ID3D11Buffer* m_pCurWorldCB;
-		m_pCurWorldCB = CopyBufferToCpu(pWorldCB);
-		SAFE_RELEASE(pWorldCB);
-
-		matWorld[4][4];
-		{
-			float* pWorldCB;
-			MapBuffer(m_pCurWorldCB, (void**)&pWorldCB, NULL);//Warning, this will reduce fps, call in present?
-			memcpy(matWorld, &pWorldCB[0], sizeof(matWorld));
-			UnmapBuffer(m_pCurWorldCB);
-			SAFE_RELEASE(m_pCurWorldCB);
-		}
-		Vec3 v;
-		vWorld = Vec3MulMat4x4(v, matWorld);//
-	}
-	else
-	{
-		Log("World CB is not set == %x", (void*)pWorldCB);
-		if (pWorldCB == NULL)
-			SAFE_RELEASE(pObjectCB);
-		return;
-	}
-	*/
 
 	//WORLDVIEW
-	float matWorldView[4][4];
-	if (pWorldViewCB != NULL)
-	{
-		ID3D11Buffer* m_pCurWorldViewCB;
-		m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
-		SAFE_RELEASE(pWorldViewCB);
+	if(pWorldViewCB != NULL)
+	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
+	SAFE_RELEASE(pWorldViewCB);
 
-		matWorldView[4][4];
-		{
-			float* pWorldViewCB;
-			MapBuffer(m_pCurWorldViewCB, (void**)&pWorldViewCB, NULL);//Warning, this will reduce fps, call in present?
-			memcpy(matWorldView, &pWorldViewCB[0], sizeof(matWorldView));
-			UnmapBuffer(m_pCurWorldViewCB);
-			SAFE_RELEASE(m_pCurWorldViewCB);
-		}
-		//Vec3 v;
-		//vWorldView = Vec4MulMat4x4(vWorld, matWorldView);//if using world
-		Vec3 v;
-		vWorldView = Vec3MulMat4x4(v, matWorldView);//else this
-	}
-	else
+	float matWorldView[4][4];
 	{
-		Log("WorldView CB is not set == %x", (void*)pWorldViewCB);
-		if (pWorldViewCB == NULL)
-			SAFE_RELEASE(pWorldViewCB);
-		return;
+		float* WorldViewCB;
+		MapBuffer(m_pCurWorldViewCB, (void**)&WorldViewCB, NULL);
+		memcpy(matWorldView, &WorldViewCB[0], sizeof(matWorldView));
+		UnmapBuffer(m_pCurWorldViewCB);
+		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
+	Vec3 v;
+	Vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
+	
 
 	//PROJECTION
-	float matProj[4][4];
-	if (pProjCB != NULL)
-	{
-		ID3D11Buffer* m_pCurProjCB;
-		m_pCurProjCB = CopyBufferToCpu(pProjCB);
-		SAFE_RELEASE(pProjCB);
+	if(pProjCB != NULL)
+	m_pCurProjCB = CopyBufferToCpu(pProjCB);
+	SAFE_RELEASE(pProjCB);
 
-		matProj[4][4];
-		{
-			float* pProjCB;
-			MapBuffer(m_pCurProjCB, (void**)&pProjCB, NULL);//Warning, this will reduce fps, call in present?
-			memcpy(matProj, &pProjCB[matProjnum], sizeof(matProj));//16works (UT4)
-			UnmapBuffer(m_pCurProjCB);
-			SAFE_RELEASE(m_pCurProjCB);
-		}
-		vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);//
-	}
-	else
+	float matProj[4][4];
 	{
-		Log("Proj CB is not set == %x", (void*)pProjCB);
-		if (pProjCB != NULL)
-			SAFE_RELEASE(pProjCB);
-		return;
+		float* pProjCB;
+		MapBuffer(m_pCurProjCB, (void**)&pProjCB, NULL);
+		memcpy(matProj, &pProjCB[matProjnum], sizeof(matProj));//16works (UT4)
+		UnmapBuffer(m_pCurProjCB);
+		SAFE_RELEASE(m_pCurProjCB);
 	}
+	Vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
+
 
 	Vec2 o;
-	o.x = ScreenCenterX + ScreenCenterX * (vWorldViewProj.x / vWorldViewProj.w);
-	o.y = ScreenCenterY + ScreenCenterY * -(vWorldViewProj.y / vWorldViewProj.w);
+	o.x = ScreenCenterX + ScreenCenterX * vWorldViewProj.x / vWorldViewProj.w;
+	o.y = ScreenCenterY + ScreenCenterY * -vWorldViewProj.y / vWorldViewProj.w;
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
