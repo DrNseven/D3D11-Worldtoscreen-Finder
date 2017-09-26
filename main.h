@@ -182,7 +182,7 @@ static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 	
 	//inv
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];//+aimheight;
+	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
 	
@@ -314,9 +314,14 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//1works (UT4)				//proj
 
-	if (pWorldViewCB == NULL|| pProjCB == NULL)
+	if (pWorldViewCB == NULL)
 	{
-		return;
+		SAFE_RELEASE(pWorldViewCB)
+	}
+
+	if (pProjCB == NULL)
+	{
+		SAFE_RELEASE(pProjCB)
 	}
 
 	//WORLDVIEW
