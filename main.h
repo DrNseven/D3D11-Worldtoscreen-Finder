@@ -7,7 +7,7 @@ int aimbot = 1;
 DWORD Daimkey = VK_RBUTTON;		//aimkey
 int aimfov = 3;				//aim field of view in % 
 int aimsens = 3;			//aim sensitivity, makes aim smoother
-int aimheight = 200;			//aim height value, low value = aims lower, high values aims heigher
+static int aimheight = 46;		//aim height value, low value = aims lower, high values aims heigher
 int autoshoot = 0;			//autoshoot
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
@@ -314,15 +314,8 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//1works (UT4)				//proj
 
-	if (pWorldViewCB == NULL)
+	if (pWorldViewCB == NULL|| pProjCB == NULL)
 	{
-		SAFE_RELEASE(pWorldViewCB);
-		return;
-	}
-
-	if (pProjCB == NULL)
-	{
-		SAFE_RELEASE(pProjCB);
 		return;
 	}
 
@@ -336,6 +329,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 		float* WorldViewCB;
 		MapBuffer(m_pCurWorldViewCB, (void**)&WorldViewCB, NULL);
 		memcpy(matWorldView, &WorldViewCB[0], sizeof(matWorldView));
+		//matWorldView[3][2] = matWorldView[3][2] + (aimheight*20);	//aimheight is usually done here for body parts
 		UnmapBuffer(m_pCurWorldViewCB);
 		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
