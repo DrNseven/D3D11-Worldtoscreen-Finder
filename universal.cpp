@@ -7,7 +7,7 @@
 #include <D3Dcompiler.h>//generateshader
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
-
+#include "assert.h"
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
@@ -140,14 +140,14 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		//use the back buffer address to create the render target
 		if (SUCCEEDED(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture)))
 		{
-			//warning: this will crash on res change, nothing seems to fix it (no crash when switching window/fullscreen)
+			//warning: this will crash on res change, nothing seems to fix it
 			pDevice->CreateRenderTargetView(RenderTargetTexture, NULL, &RenderTargetView); 
 			RenderTargetTexture->Release();
 		}
 
 		firstTime = false;
 	}
-
+	
 	//viewport
 	pContext->RSGetViewports(&vps, &viewport);
 	ScreenCenterX = viewport.Width / 2.0f;
@@ -160,19 +160,23 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	if (!psGreen)
 	GenerateShader(pDevice, &psGreen, 0.0f, 1.0f, 0.0f);
 
-
 	//call before you draw
 	pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 	//draw
 	if (pFontWrapper)
 	pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE);
-
+	
 	//show target amount 
 	//wchar_t reportValueS[256];
 	//swprintf_s(reportValueS, L"AimEspInfo.size() = %d", (int)AimEspInfo.size());
 	//if (pFontWrapper)
-	//pFontWrapper->DrawString(pContext, reportValueS, 14.0f, 16.0f, 30.0f, 0xffffffff, FW1_RESTORESTATE);
+	//pFontWrapper->DrawString(pContext, reportValueS, 14.0f, 16.0f, 30.0f, 0xffff1612, FW1_RESTORESTATE);
 	
+	//if (pWorldViewCB != NULL && pProjCB != NULL)
+	//{
+		//TransformVertToScreenSpace(pContext, pWorldViewCB, pProjCB);
+	//}
+
 
 	//menu
 	if (IsReady() == false)
@@ -190,7 +194,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	
 
 	//draw aimpoint/esp
-	//if (sOptions[2].Function) //if esp is selected in menu
+	//if (sOptions[2].Function) //if esp is on in menu
 	if (AimEspInfo.size() != NULL)
 	{
 		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
@@ -199,7 +203,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX < viewport.Width && AimEspInfo[i].vOutY < viewport.Height)
 			{
 				if (pFontWrapper)
-				pFontWrapper->DrawString(pContext, L"Enemy", 14, (int)AimEspInfo[i].vOutX, (int)AimEspInfo[i].vOutY, 0xFFFFFFFF, FW1_RESTORESTATE| FW1_NOGEOMETRYSHADER | FW1_CENTER | FW1_ALIASED);
+				pFontWrapper->DrawString(pContext, L"Enemy", 14, (int)AimEspInfo[i].vOutX, (int)AimEspInfo[i].vOutY, 0xffff1612, FW1_RESTORESTATE| FW1_NOGEOMETRYSHADER | FW1_CENTER | FW1_ALIASED);
 			}
 		}
 	}
@@ -289,6 +293,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//logger
 	if (GetAsyncKeyState(VK_MENU) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(0x4C) & 1) //ALT + CTRL + L toggles logger
 		logger = !logger;
+	//if ((logger && pFontWrapper) && (Begin(60)))
 	if (logger && pFontWrapper) //&& countnum >= 0)
 	{
 		//bruteforce WorldViewCBnum
@@ -339,7 +344,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 		pFontWrapper->DrawString(pContext, L"F9 = log drawfunc", 20.0f, 220.0f, 180.0f, 0xffffffff, FW1_RESTORESTATE);
 	}
-
+	
 	return phookD3D11Present(pSwapChain, SyncInterval, Flags);
 }
 
@@ -372,6 +377,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//wallhack/chams
 	//if (sOptions[0].Function||sOptions[1].Function) //if wallhack/chams option is selected in menu
 	if (Stride == countnum)
+	//if (Stride == 24 && Descr.Format == 71)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
 		SetDepthStencilState(DISABLED);
@@ -386,6 +392,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//esp/aimbot
 	//if ((sOptions[3].Function) || (sOptions[4].Function)) //if aimbot/esp option is selected in menu
 	if(Stride == countnum)
+	//if (Stride == 24 && Descr.Format == 71)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
 		AddModel(pContext);//w2s
@@ -397,7 +404,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	if (logger)
 	{
 		if ((Stride == countnum) && (GetAsyncKeyState(VK_F10) & 1))
-			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, texdesc.Width, texdesc.Height);
+			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
 
 		//hold down P key until a texture is wallhacked, press I to log values of those textures
 		if (GetAsyncKeyState('O') & 1) //-
@@ -406,11 +413,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			countnum++;
 		if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState('9') & 1)) //reset, set to -1
 			countnum = -1;
-		if (countnum == Stride)//IndexCount / 100)
+		if (countnum == Stride)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
-				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, texdesc.Width, texdesc.Height);
+				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
 
-		if (countnum == Stride)//IndexCount / 100)
+		if (countnum == Stride)//IndexCount/100)
 		{
 			SetDepthStencilState(DISABLED);
 			//pContext->RSSetState(rwState);    //wireframe
@@ -638,14 +645,26 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[12], hookD3D11DrawIndexed, reinterpret_cast<void**>(&phookD3D11DrawIndexed)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[13], hookD3D11Draw, reinterpret_cast<void**>(&phookD3D11Draw)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[13]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[8], hookD3D11PSSetShaderResources, reinterpret_cast<void**>(&phookD3D11PSSetShaderResources)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[24], hookD3D11CreateQuery, reinterpret_cast<void**>(&phookD3D11CreateQuery)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
+
+	if (MH_CreateHook((DWORD_PTR*)pContextVTable[20], hookD3D11DrawIndexedInstanced, reinterpret_cast<void**>(&phookD3D11DrawIndexedInstanced)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[20]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pContextVTable[13], hookD3D11Draw, reinterpret_cast<void**>(&phookD3D11Draw)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[13]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pContextVTable[21], hookD3D11DrawInstanced, reinterpret_cast<void**>(&phookD3D11DrawInstanced)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[21]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pContextVTable[40], hookD3D11DrawInstancedIndirect, reinterpret_cast<void**>(&phookD3D11DrawInstancedIndirect)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[40]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pContextVTable[39], hookD3D11DrawIndexedInstancedIndirect, reinterpret_cast<void**>(&phookD3D11DrawIndexedInstancedIndirect)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[39]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[7], hookD3D11VSSetConstantBuffers, reinterpret_cast<void**>(&phookD3D11VSSetConstantBuffers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[10], hookD3D11PSSetSamplers, reinterpret_cast<void**>(&phookD3D11PSSetSamplers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
+	
 
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
@@ -678,8 +697,14 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 		if (MH_Uninitialize() != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[8]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
+
+		if (MH_DisableHook((DWORD_PTR*)pContextVTable[20]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[13]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pContextVTable[21]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pContextVTable[40]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pContextVTable[39]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
 		break;

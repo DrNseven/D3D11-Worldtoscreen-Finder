@@ -57,7 +57,7 @@ UINT psStartSlot;
 UINT vsStartSlot;
 
 //used for logging/cycling through values
-bool logger = true;
+bool logger = false;
 int countnum = -1;
 char szString[64];
 
@@ -91,6 +91,27 @@ void Log(const char *fmt, ...)
 	ofstream logfile(GetDirectoryFile("log.txt"), ios::app);
 	if (logfile.is_open() && text)	logfile << text << endl;
 	logfile.close();
+}
+
+#include <chrono>
+using namespace std::chrono;
+
+high_resolution_clock::time_point lastTime = high_resolution_clock::time_point();
+
+bool Begin(const int fps)
+{
+
+	auto now = high_resolution_clock::now();
+	auto millis = duration_cast<milliseconds>(now - lastTime).count();
+
+	auto time = static_cast<int>(1.f / fps * std::milli::den);
+	auto milliPerFrame = duration<long, std::milli>(time).count();
+	if (millis >= milliPerFrame)
+	{
+		lastTime = now;
+		return true;
+	}
+	return false;
 }
 
 //==========================================================================================================================
@@ -568,9 +589,9 @@ struct AimEspInfo_t
 std::vector<AimEspInfo_t>AimEspInfo;
 
 //w2s
-int WorldViewCBnum = 2;
-int ProjCBnum = 1;
-int matProjnum = 16;
+/*static*/ int WorldViewCBnum = 2;
+/*static*/ int ProjCBnum = 1;
+/*static*/ int matProjnum = 16;
 //Game			WorldViewCBnum		ProjCBnum		matProjnum
 //UT4 Alpha		2					1				16		
 //Fortnite		2					1				16
@@ -578,58 +599,45 @@ int matProjnum = 16;
 //Warframe		0					0				0 or 4
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
-ID3D11Buffer* m_pCurWorldViewCB = nullptr;
-ID3D11Buffer* m_pCurProjCB = nullptr;
+ID3D11Buffer* m_pCurWorldViewCB = NULL;
+ID3D11Buffer* m_pCurProjCB = NULL;
 void AddModel(ID3D11DeviceContext* pContext)
 {
 	//Warning, this is NOT optimized:
 
 	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
 
-	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
-
-	if (pWorldViewCB == NULL)
-	{
-		SAFE_RELEASE(pWorldViewCB)
-		//return; here only if a game is crashing
-	}
-
-	if (pProjCB == NULL)
-	{
-		SAFE_RELEASE(pProjCB)
-		//return; here only if a game is crashing
-	}
-
-	//WORLDVIEW
-	if (pWorldViewCB != NULL)
-		m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
+	if (m_pCurWorldViewCB == NULL && pWorldViewCB != NULL)
+	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
+	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
+
+	if (m_pCurProjCB == NULL && pProjCB != NULL)
+	m_pCurProjCB = CopyBufferToCpu(pProjCB);
+	SAFE_RELEASE(pProjCB);
+
+	if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)
+	{
+		return;
+	}
+	
 	float matWorldView[4][4];
 	{
-		float* WorldViewCB;
-		MapBuffer(m_pCurWorldViewCB, (void**)&WorldViewCB, NULL);
-		memcpy(matWorldView, &WorldViewCB[0], sizeof(matWorldView));
-		matWorldView[3][2] = matWorldView[3][2] + (aimheight * 20);		//aimheight can be done here for body parts
+		float* worldview;
+		MapBuffer(m_pCurWorldViewCB, (void**)&worldview, NULL);
+		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
 		UnmapBuffer(m_pCurWorldViewCB);
-		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
 	Vec3 v;
 	Vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
-
-
-	//PROJECTION
-	if (pProjCB != NULL)
-		m_pCurProjCB = CopyBufferToCpu(pProjCB);
-	SAFE_RELEASE(pProjCB);
-
+	
 	float matProj[4][4];
 	{
-		float* pProjCB;
-		MapBuffer(m_pCurProjCB, (void**)&pProjCB, NULL);
-		memcpy(matProj, &pProjCB[matProjnum], sizeof(matProj));//matProjnum
+		float *proj;
+		MapBuffer(m_pCurProjCB, (void**)&proj, NULL);
+		memcpy(matProj, &proj[matProjnum], sizeof(matProj));//matProjnum
 		UnmapBuffer(m_pCurProjCB);
-		SAFE_RELEASE(m_pCurProjCB);
 	}
 	Vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
 
@@ -640,7 +648,15 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
+
+	SAFE_RELEASE(m_pCurWorldViewCB);
+	SAFE_RELEASE(m_pCurProjCB);
 }
 
 //==========================================================================================================================
+
+//void TransformVertToScreenSpace(ID3D11DeviceContext* pContext, ID3D11Buffer* pWorldViewCB, ID3D11Buffer* pProjCB)
+//{
+
+//}
 
