@@ -2,16 +2,12 @@
 
 //==========================================================================================================================
 
-//features
-int aimbot = 1;
+//globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
-int aimfov = 3;				//aim field of view in % 
-int aimsens = 3;			//aim sensitivity, makes aim smoother
-static int aimheight = 46;		//aim height value, low value = aims lower, high values aims heigher
-int autoshoot = 0;			//autoshoot
+int aimheight = 46;				//aim height value
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
-DWORD astime = timeGetTime();		//auto_shoot
+DWORD astime = timeGetTime();	//autoshoot timer
 
 //init only once
 bool firstTime = true;
@@ -46,6 +42,7 @@ ID3D11PixelShader* psGreen = NULL;
 UINT pssrStartSlot;
 D3D11_SHADER_RESOURCE_VIEW_DESC  Descr;
 ID3D11ShaderResourceView* ShaderResourceView;
+D3D11_TEXTURE2D_DESC texdesc;
 
 //psgetConstantbuffers
 ID3D11Buffer *pcsBuffer;
@@ -56,12 +53,13 @@ UINT pscStartSlot;
 ID3D11Buffer *mConstantBuffers;
 UINT vsConstant_StartSlot;
 
-//used for logging/cycling through values
-bool logger = false;
-static int countnum = -1;
-char szString[64];
-
 UINT psStartSlot;
+UINT vsStartSlot;
+
+//used for logging/cycling through values
+bool logger = true;
+int countnum = -1;
+char szString[64];
 
 #define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
 
@@ -160,6 +158,302 @@ void SetDepthStencilState(eDepthState aState)
 
 //==========================================================================================================================
 
+//menu
+#define MAX_ITEMS 25
+
+#define T_FOLDER 1
+#define T_OPTION 2
+#define T_MULTIOPTION 3
+#define T_AIMKEYOPTION 4
+
+#define LineH 15
+
+struct Options {
+	LPCWSTR Name;
+	int	Function;
+	BYTE Type;
+};
+
+struct Menu {
+	LPCWSTR Title;
+	int x;
+	int y;
+	int w;
+};
+
+DWORD Color_Font;
+DWORD Color_On;
+DWORD Color_Off;
+DWORD Color_Folder;
+DWORD Color_Current;
+
+bool Is_Ready, Visible;
+int Items, Cur_Pos;
+
+Options sOptions[MAX_ITEMS];
+Menu sMenu;
+
+
+void JBMenu(void)
+{
+	Visible = true;
+}
+
+void Init_Menu(ID3D11DeviceContext *pContext, LPCWSTR Title, int x, int y)
+{
+	Is_Ready = true;
+	sMenu.Title = Title;
+	sMenu.x = x;
+	sMenu.y = y;
+}
+
+void AddFolder(LPCWSTR Name, int Pointer)
+{
+	sOptions[Items].Name = (LPCWSTR)Name;
+	sOptions[Items].Function = Pointer;
+	sOptions[Items].Type = T_FOLDER;
+	Items++;
+}
+
+void AddOption(LPCWSTR Name, int Pointer, int *Folder)
+{
+	if (*Folder == 0)
+		return;
+	sOptions[Items].Name = Name;
+	sOptions[Items].Function = Pointer;
+	sOptions[Items].Type = T_OPTION;
+	Items++;
+}
+
+void AddMultiOption(LPCWSTR Name, int Pointer, int *Folder)
+{
+	if (*Folder == 0)
+		return;
+	sOptions[Items].Name = Name;
+	sOptions[Items].Function = Pointer;
+	sOptions[Items].Type = T_MULTIOPTION;
+	Items++;
+}
+
+void AddMultiOptionText(LPCWSTR Name, int Pointer, int *Folder)
+{
+	if (*Folder == 0)
+		return;
+	sOptions[Items].Name = Name;
+	sOptions[Items].Function = Pointer;
+	sOptions[Items].Type = T_AIMKEYOPTION;
+	Items++;
+}
+
+void Navigation()
+{
+	if (GetAsyncKeyState(VK_INSERT) & 1)
+		Visible = !Visible;
+
+	if (!Visible)
+		return;
+
+	int value = 0;
+
+	if (GetAsyncKeyState(VK_DOWN) & 1)
+	{
+		Cur_Pos++;
+		if (sOptions[Cur_Pos].Name == 0)
+			Cur_Pos--;
+	}
+
+	if (GetAsyncKeyState(VK_UP) & 1)
+	{
+		Cur_Pos--;
+		if (Cur_Pos == -1)
+			Cur_Pos++;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_OPTION && GetAsyncKeyState(VK_RIGHT) & 1)
+	{
+		if (sOptions[Cur_Pos].Function == 0)
+			value++;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_OPTION && (GetAsyncKeyState(VK_LEFT) & 1) && sOptions[Cur_Pos].Function == 1)
+	{
+		value--;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_MULTIOPTION && GetAsyncKeyState(VK_RIGHT) & 1 && sOptions[Cur_Pos].Function <= 6)//max
+	{
+		value++;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_MULTIOPTION && (GetAsyncKeyState(VK_LEFT) & 1) && sOptions[Cur_Pos].Function != 0)
+	{
+		value--;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_AIMKEYOPTION && GetAsyncKeyState(VK_RIGHT) & 1 && sOptions[Cur_Pos].Function <= 6)//max
+	{
+		value++;
+	}
+
+	else if (sOptions[Cur_Pos].Type == T_AIMKEYOPTION && (GetAsyncKeyState(VK_LEFT) & 1) && sOptions[Cur_Pos].Function != 0)
+	{
+		value--;
+	}
+
+
+	if (value) {
+		sOptions[Cur_Pos].Function += value;
+		if (sOptions[Cur_Pos].Type == T_FOLDER)
+		{
+			memset(&sOptions, 0, sizeof(sOptions));
+			Items = 0;
+		}
+	}
+
+}
+
+bool IsReady()
+{
+	if (Items)
+		return true;
+	return false;
+}
+
+void DrawTextF(ID3D11DeviceContext* pContext, LPCWSTR text, int FontSize, int x, int y, DWORD Col)
+{
+	if (Is_Ready == false)
+		MessageBoxA(0, "Error, you dont initialize the menu!", "Error", MB_OK);
+
+	if (pFontWrapper)
+		pFontWrapper->DrawString(pContext, text, (float)FontSize, (float)x, (float)y, Col, FW1_RESTORESTATE);
+}
+
+void Draw_Menu()
+{
+	if (!Visible)
+		return;
+
+	DrawTextF(pContext, sMenu.Title, 14, sMenu.x + 10, sMenu.y, Color_Font);
+	for (int i = 0; i < Items; i++)
+	{
+		if (sOptions[i].Type == T_OPTION)
+		{
+			if (sOptions[i].Function)
+			{
+				DrawTextF(pContext, L"On", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+			}
+			else {
+				DrawTextF(pContext, L"Off", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_Off);
+			}
+		}
+
+		if (sOptions[i].Type == T_AIMKEYOPTION)
+		{
+			if (sOptions[i].Function == 0)
+				DrawTextF(pContext, L"Right Mouse", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 1)
+				DrawTextF(pContext, L"Left Mouse", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 2)
+				DrawTextF(pContext, L"Shift", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 3)
+				DrawTextF(pContext, L"Ctrl", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 4)
+				DrawTextF(pContext, L"Alt", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 5)
+				DrawTextF(pContext, L"Space", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 6)
+				DrawTextF(pContext, L"X", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 7)
+				DrawTextF(pContext, L"C", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+		}
+
+		if (sOptions[i].Type == T_MULTIOPTION)
+		{
+			if (sOptions[i].Function == 0)
+				DrawTextF(pContext, L"0", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 1)
+				DrawTextF(pContext, L"1", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 2)
+				DrawTextF(pContext, L"2", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 3)
+				DrawTextF(pContext, L"3", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 4)
+				DrawTextF(pContext, L"4", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 5)
+				DrawTextF(pContext, L"5", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 6)
+				DrawTextF(pContext, L"6", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+
+			if (sOptions[i].Function == 7)
+				DrawTextF(pContext, L"7", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_On);
+		}
+
+		if (sOptions[i].Type == T_FOLDER)
+		{
+			if (sOptions[i].Function)
+			{
+				DrawTextF(pContext, L"Open", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_Folder);
+			}
+			else {
+				DrawTextF(pContext, L"Closed", 14, sMenu.x + 150, sMenu.y + LineH*(i + 2), Color_Folder);
+			}
+		}
+		DWORD Color = Color_Font;
+		if (Cur_Pos == i)
+			Color = Color_Current;
+		DrawTextF(pContext, sOptions[i].Name, 14, sMenu.x + 6, sMenu.y + 1 + LineH*(i + 2), 0xFF2F4F4F);
+		DrawTextF(pContext, sOptions[i].Name, 14, sMenu.x + 5, sMenu.y + LineH*(i + 2), Color);
+
+	}
+}
+
+#define ORANGE 0xFF00BFFF
+#define BLACK 0xFF000000
+#define WHITE 0xFFFFFFFF
+#define GREEN 0xFF00FF00 
+#define RED 0xFFFF0000 
+#define GRAY 0xFF2F4F4F
+
+//features deafult settings
+int Folder1 = 1;
+int Item1 = 1; //wallhack
+int Item2 = 1; //chams
+int Item3 = 1; //esp
+int Item4 = 1; //aimbot
+int Item5 = 0; //aimkey 0 = RMouse
+int Item6 = 3; //amsens
+int Item7 = 3; //aimfov
+int Item8 = 0; //aimheight
+int Item9 = 0; //autoshoot
+
+void Do_Menu()
+{
+	AddOption(L"Wallhack", Item1, &Folder1);
+	AddOption(L"Chams", Item2, &Folder1);
+	AddOption(L"Esp", Item3, &Folder1);
+	AddOption(L"Aimbot", Item4, &Folder1);
+	AddMultiOptionText(L"Aimkey", Item5, &Folder1);
+	AddMultiOption(L"Aimsens", Item6, &Folder1);
+	AddMultiOption(L"Aimfov", Item7, &Folder1);
+	AddMultiOption(L"Aimheight", Item8, &Folder1);
+	AddOption(L"Autoshoot", Item9, &Folder1);
+}
+
+//==========================================================================================================================
+
 //w2s stuff
 struct Vec2
 {
@@ -180,19 +474,11 @@ static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 {
 	Vec4 o;
 	
-	//inv
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
 	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
-	
-	/*
-	//normal?
-	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[0][1] + v.z * mat4x4[0][2] + v.w * mat4x4[0][3];
-	o.y = v.x * mat4x4[1][0] + v.y * mat4x4[1][1] + v.z * mat4x4[1][2] + v.w * mat4x4[1][3];
-	o.z = v.x * mat4x4[2][0] + v.y * mat4x4[2][1] + v.z * mat4x4[2][2] + v.w * mat4x4[2][3];
-	o.w = v.x * mat4x4[3][0] + v.y * mat4x4[3][1] + v.z * mat4x4[3][2] + v.w * mat4x4[3][3];
-	*/
+
 	return o;
 }
 
@@ -200,19 +486,11 @@ static Vec4 Vec3MulMat4x4(const Vec3& v, float(*mat4x4)[4])
 {
 	Vec4 o;
 	
-	//inv
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + mat4x4[3][0];
 	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + mat4x4[3][1];
 	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + mat4x4[3][2];
 	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + mat4x4[3][3];
 	
-	/*
-	//normal?
-	o.x = mat4x4[0][0] * v.x + mat4x4[0][1] * v.y + mat4x4[0][2] * v.z + mat4x4[0][3];
-	o.y = mat4x4[1][0] * v.x + mat4x4[1][1] * v.y + mat4x4[1][2] * v.z + mat4x4[1][3];
-	o.z = mat4x4[2][0] * v.x + mat4x4[2][1] * v.y + mat4x4[2][2] * v.z + mat4x4[2][3];
-	o.w = mat4x4[3][0] * v.x + mat4x4[3][1] * v.y + mat4x4[3][2] * v.z + mat4x4[3][3];
-	*/
 	return o;
 }
 
@@ -285,7 +563,6 @@ float GetmDst(float Xx, float Yy, float xX, float yY)
 struct AimEspInfo_t
 {
 	float vOutX, vOutY;
-	//INT       iTeam;
 	float CrosshairDst;
 };
 std::vector<AimEspInfo_t>AimEspInfo;
@@ -294,39 +571,38 @@ std::vector<AimEspInfo_t>AimEspInfo;
 int WorldViewCBnum = 2;
 int ProjCBnum = 1;
 int matProjnum = 16;
-
 //Game			WorldViewCBnum		ProjCBnum		matProjnum
-//UT4 Alpha		2			1			16		(4=world, 2=view, 1=proj, 16=proj[xx])
-//Outlast 		0			1			0 and 16
-//Overwatch		7			9			0		(untested)
-//Warframe		0			0			0 or 4
+//UT4 Alpha		2					1				16		
+//Fortnite		2					1				16
+//Outlast 		0					1				0 and 16
+//Warframe		0					0				0 or 4
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
-ID3D11Buffer* m_pCurWorldViewCB;
-ID3D11Buffer* m_pCurProjCB;
+ID3D11Buffer* m_pCurWorldViewCB = nullptr;
+ID3D11Buffer* m_pCurProjCB = nullptr;
 void AddModel(ID3D11DeviceContext* pContext)
 {
 	//Warning, this is NOT optimized:
 
-	//pContext->VSGetConstantBuffers(countnum, 1, &pWorldCB);//4works (UT4) (not needed) //world
+	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
 
-	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//2works (UT4)		//worldview
-
-	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//1works (UT4)				//proj
+	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
 
 	if (pWorldViewCB == NULL)
 	{
 		SAFE_RELEASE(pWorldViewCB)
+		//return; here only if a game is crashing
 	}
 
 	if (pProjCB == NULL)
 	{
 		SAFE_RELEASE(pProjCB)
+		//return; here only if a game is crashing
 	}
 
 	//WORLDVIEW
-	if(pWorldViewCB != NULL)
-	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
+	if (pWorldViewCB != NULL)
+		m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
 	float matWorldView[4][4];
@@ -334,24 +610,24 @@ void AddModel(ID3D11DeviceContext* pContext)
 		float* WorldViewCB;
 		MapBuffer(m_pCurWorldViewCB, (void**)&WorldViewCB, NULL);
 		memcpy(matWorldView, &WorldViewCB[0], sizeof(matWorldView));
-		//matWorldView[3][2] = matWorldView[3][2] + (aimheight*20);	//aimheight is usually done here for body parts
+		matWorldView[3][2] = matWorldView[3][2] + (aimheight * 20);		//aimheight can be done here for body parts
 		UnmapBuffer(m_pCurWorldViewCB);
 		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
 	Vec3 v;
 	Vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
-	
+
 
 	//PROJECTION
-	if(pProjCB != NULL)
-	m_pCurProjCB = CopyBufferToCpu(pProjCB);
+	if (pProjCB != NULL)
+		m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 
 	float matProj[4][4];
 	{
 		float* pProjCB;
 		MapBuffer(m_pCurProjCB, (void**)&pProjCB, NULL);
-		memcpy(matProj, &pProjCB[matProjnum], sizeof(matProj));//16works (UT4)
+		memcpy(matProj, &pProjCB[matProjnum], sizeof(matProj));//matProjnum
 		UnmapBuffer(m_pCurProjCB);
 		SAFE_RELEASE(m_pCurProjCB);
 	}
@@ -365,9 +641,6 @@ void AddModel(ID3D11DeviceContext* pContext)
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
 }
-/*
-void TransformToScreenSpace(ID3D11DeviceContext* pContext)
-{
-	
-}
-*/
+
+//==========================================================================================================================
+
