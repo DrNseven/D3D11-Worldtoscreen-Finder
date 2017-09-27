@@ -190,7 +190,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	
 
 	//draw aimpoint/esp
-	if (sOptions[2].Function)
+	//if (sOptions[2].Function) //if esp is selected in menu
 	if (AimEspInfo.size() != NULL)
 	{
 		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
