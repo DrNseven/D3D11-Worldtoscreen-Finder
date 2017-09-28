@@ -451,6 +451,7 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 			ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
 			Texture->GetDesc(&texdesc);
 			Texture->Release();
+			Resource->Release();
 		}
 	}
 
