@@ -627,6 +627,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 		float* worldview;
 		MapBuffer(m_pCurWorldViewCB, (void**)&worldview, NULL);
 		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
+		matWorldView[3][2] = matWorldView[3][2] + (aimheight * 20); //aimheight can be done here
 		UnmapBuffer(m_pCurWorldViewCB);
 	}
 	Vec3 v;
