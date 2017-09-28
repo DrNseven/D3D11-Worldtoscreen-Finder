@@ -403,8 +403,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//ALT + CTRL + L toggles logger
 	if (logger)
 	{
-		if ((Stride == countnum) && (GetAsyncKeyState(VK_F10) & 1))
-			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
+		//if ((Stride == countnum) && (GetAsyncKeyState(VK_F10) & 1))
+			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
 
 		//hold down P key until a texture is wallhacked, press I to log values of those textures
 		if (GetAsyncKeyState('O') & 1) //-
@@ -450,6 +450,7 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 			pShaderResView->GetResource(&Resource);
 			ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
 			Texture->GetDesc(&texdesc);
+			Texture->Release();
 		}
 	}
 
