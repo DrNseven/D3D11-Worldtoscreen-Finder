@@ -617,8 +617,8 @@ void AddModel(ID3D11DeviceContext* pContext)
 	m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 	
-	if (m_pCurWorldViewCB != NULL && m_pCurProjCB != NULL)
-	{
+	//if (m_pCurWorldViewCB != NULL && m_pCurProjCB != NULL)//uncomment if a game is crashing while cycling through values
+	//{
 	
 	float matWorldView[4][4];
 	{
@@ -649,7 +649,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
-	}
+	//}
 }
 
 //==========================================================================================================================
