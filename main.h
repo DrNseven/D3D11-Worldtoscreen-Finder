@@ -616,11 +616,9 @@ void AddModel(ID3D11DeviceContext* pContext)
 	if (m_pCurProjCB == NULL && pProjCB != NULL)
 	m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
-
-	if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)
+	
+	if (m_pCurWorldViewCB != NULL && m_pCurProjCB != NULL)
 	{
-		return;
-	}
 	
 	float matWorldView[4][4];
 	{
@@ -629,6 +627,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
 		matWorldView[3][2] = matWorldView[3][2] + (aimheight * 20); //aimheight can be done here
 		UnmapBuffer(m_pCurWorldViewCB);
+		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
 	Vec3 v;
 	Vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
@@ -639,6 +638,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 		MapBuffer(m_pCurProjCB, (void**)&proj, NULL);
 		memcpy(matProj, &proj[matProjnum], sizeof(matProj));//matProjnum
 		UnmapBuffer(m_pCurProjCB);
+		SAFE_RELEASE(m_pCurProjCB);
 	}
 	Vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
 
@@ -649,9 +649,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
-
-	SAFE_RELEASE(m_pCurWorldViewCB);
-	SAFE_RELEASE(m_pCurProjCB);
+	}
 }
 
 //==========================================================================================================================
