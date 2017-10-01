@@ -14,6 +14,7 @@
 
 
 typedef HRESULT(__stdcall *D3D11PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
+typedef HRESULT(__stdcall *D3D11ResizeBuffersHook) (IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
 typedef void(__stdcall *D3D11DrawIndexedHook) (ID3D11DeviceContext* pContext, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation);
 typedef void(__stdcall *D3D11PSSetShaderResourcesHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 typedef void(__stdcall *D3D11CreateQueryHook) (ID3D11Device* pDevice, const D3D11_QUERY_DESC *pQueryDesc, ID3D11Query **ppQuery);
@@ -28,6 +29,7 @@ typedef void(__stdcall *D3D11PSSetSamplersHook) (ID3D11DeviceContext* pContext, 
 
 
 D3D11PresentHook phookD3D11Present = NULL;
+D3D11ResizeBuffersHook phookD3D11ResizeBuffers = NULL;
 D3D11DrawIndexedHook phookD3D11DrawIndexed = NULL;
 D3D11PSSetShaderResourcesHook phookD3D11PSSetShaderResources = NULL;
 D3D11CreateQueryHook phookD3D11CreateQuery = NULL;
@@ -55,6 +57,16 @@ IFW1FontWrapper *pFontWrapper = NULL;
 
 //==========================================================================================================================
 
+HRESULT __stdcall hookD3D11ResizeBuffers(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+	if (RenderTargetView != NULL)
+		SAFE_RELEASE(RenderTargetView);
+
+	return phookD3D11ResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+}
+
+//==========================================================================================================================
+
 HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
 	if (firstTime)
@@ -65,6 +77,9 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			pSwapChain->GetDevice(__uuidof(pDevice), (void**)&pDevice);
 			pDevice->GetImmediateContext(&pContext);
 		}
+
+		//load cfg settings
+		LoadCfg();
 		
 		//create depthstencilstate
 		D3D11_DEPTH_STENCIL_DESC  stencilDesc;
@@ -137,14 +152,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		hResult = pFW1Factory->CreateFontWrapper(pDevice, L"Tahoma", &pFontWrapper);
 		pFW1Factory->Release();
 
-		//use the back buffer address to create the render target
-		if (SUCCEEDED(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&RenderTargetTexture)))
-		{
-			//warning: this will crash on res change, nothing seems to fix it
-			pDevice->CreateRenderTargetView(RenderTargetTexture, NULL, &RenderTargetView); 
-			RenderTargetTexture->Release();
-		}
-
 		firstTime = false;
 	}
 	
@@ -153,6 +160,23 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	ScreenCenterX = viewport.Width / 2.0f;
 	ScreenCenterY = viewport.Height / 2.0f;
 
+	//create rendertarget
+	if (RenderTargetView == NULL)
+	{
+		//Log("called");
+		ID3D11Texture2D* pBackBuffer = NULL;
+
+		pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+		pDevice->CreateRenderTargetView(pBackBuffer, NULL, &RenderTargetView);
+		pBackBuffer->Release();
+	}
+	else //call before you draw
+		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
+
+	if (RenderTargetView == NULL)
+		RenderTargetView->Release();
+
 	//shaders
 	if (!psRed)
 	GenerateShader(pDevice, &psRed, 1.0f, 0.0f, 0.0f);
@@ -160,8 +184,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	if (!psGreen)
 	GenerateShader(pDevice, &psGreen, 0.0f, 1.0f, 0.0f);
 
-	//call before you draw
-	pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 	//draw
 	if (pFontWrapper)
 	pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE);
@@ -177,7 +199,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		//TransformVertToScreenSpace(pContext, pWorldViewCB, pProjCB);
 	//}
 
-
+	
 	//menu
 	if (IsReady() == false)
 	{
@@ -194,7 +216,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	
 
 	//draw aimpoint/esp
-	//if (sOptions[2].Function) //if esp is on in menu
+	//if (sOptions[2].Function == 1) //if esp is enabled in menu
 	if (AimEspInfo.size() != NULL)
 	{
 		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
@@ -220,7 +242,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	aimheight = sOptions[7].Function;//aimheight
 	
 	//aimbot
-	if(sOptions[3].Function==1)
+	//if(sOptions[3].Function == 1) //if aimbot is enabled in menu
 	//if (AimEspInfo.size() != NULL && GetAsyncKeyState(Daimkey) & 0x8000)//warning: GetAsyncKeyState here would cause aimbot not to work for a few people
 	if (AimEspInfo.size() != NULL)
 	{
@@ -266,7 +288,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 			//autoshoot on
 			//if ((!GetAsyncKeyState(VK_LBUTTON) && (*sOptions[8].Function))) //
-			if ((!GetAsyncKeyState(VK_LBUTTON) && (sOptions[8].Function) && (GetAsyncKeyState(Daimkey) & 0x8000)))
+			if ((!GetAsyncKeyState(VK_LBUTTON) && (sOptions[8].Function==1) && (GetAsyncKeyState(Daimkey) & 0x8000)))
 			{
 				if (!IsPressed)
 				{
@@ -279,7 +301,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	AimEspInfo.clear();
 
 	//autoshoot off
-	if (sOptions[8].Function && IsPressed)
+	if (sOptions[8].Function==1 && IsPressed)
 	{
 		if (timeGetTime() - astime >= asdelay)
 		{
@@ -375,7 +397,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 
 	//wallhack/chams
-	//if (sOptions[0].Function||sOptions[1].Function) //if wallhack/chams option is selected in menu
+	//if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
 	if (Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
@@ -390,7 +412,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	}
 
 	//esp/aimbot
-	//if ((sOptions[3].Function) || (sOptions[4].Function)) //if aimbot/esp option is selected in menu
+	//if ((sOptions[3].Function==1) || (sOptions[4].Function==1)) //if aimbot/esp option is enabled in menu
 	if(Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
@@ -404,7 +426,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	if (logger)
 	{
 		//if ((Stride == countnum) && (GetAsyncKeyState(VK_F10) & 1))
-			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
+			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
 		//hold down P key until a texture is wallhacked, press I to log values of those textures
 		if (GetAsyncKeyState('O') & 1) //-
@@ -415,7 +437,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			countnum = -1;
 		if (countnum == Stride)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
-				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && texdesc.Width == %d && texdesc.Height == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, texdesc.Width, texdesc.Height);
+				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
 		if (countnum == Stride)//IndexCount/100)
 		{
@@ -438,21 +460,12 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 {
 	pssrStartSlot = StartSlot;
 
-	for (UINT j = 0; j < NumViews; j++)
+	//resources
+	if(ppShaderResourceViews != NULL)
+	pShaderResView = *ppShaderResourceViews;
+	if (pShaderResView!=NULL)
 	{
-		//resources loop
-		ID3D11ShaderResourceView* pShaderResView = ppShaderResourceViews[j];
-		if (pShaderResView)
-		{
-			pShaderResView->GetDesc(&Descr);
-
-			ID3D11Resource *Resource;
-			pShaderResView->GetResource(&Resource);
-			ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
-			Texture->GetDesc(&texdesc);
-			Texture->Release();
-			Resource->Release();
-		}
+		pShaderResView->GetDesc(&Descr);
 	}
 
 	/*
@@ -645,6 +658,9 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_Initialize() != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pSwapChainVtable[8], hookD3D11Present, reinterpret_cast<void**>(&phookD3D11Present)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pSwapChainVtable[13], hookD3D11ResizeBuffers, reinterpret_cast<void**>(&phookD3D11ResizeBuffers)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[13]) != MH_OK) { return 1; }
+	
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[12], hookD3D11DrawIndexed, reinterpret_cast<void**>(&phookD3D11DrawIndexed)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[8], hookD3D11PSSetShaderResources, reinterpret_cast<void**>(&phookD3D11PSSetShaderResources)) != MH_OK) { return 1; }
@@ -666,7 +682,6 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[10], hookD3D11PSSetSamplers, reinterpret_cast<void**>(&phookD3D11PSSetSamplers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
-	
 
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
@@ -698,6 +713,7 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 	case DLL_PROCESS_DETACH: // A process unloads the DLL.
 		if (MH_Uninitialize() != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[13]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }

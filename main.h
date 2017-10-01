@@ -2,6 +2,18 @@
 
 //==========================================================================================================================
 
+//features deafult settings
+int Folder1 = 1;
+int Item1 = 1; //sOptions[0].Function //wallhack
+int Item2 = 1; //sOptions[1].Function //chams
+int Item3 = 1; //sOptions[2].Function //esp
+int Item4 = 1; //sOptions[3].Function //aimbot
+int Item5 = 0; //sOptions[4].Function //aimkey 0 = RMouse
+int Item6 = 3; //sOptions[5].Function //amsens
+int Item7 = 3; //sOptions[6].Function //aimfov
+int Item8 = 0; //sOptions[7].Function //aimheight
+int Item9 = 0; //sOptions[8].Function //autoshoot
+
 //globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
 int aimheight = 46;				//aim height value
@@ -40,8 +52,9 @@ ID3D11PixelShader* psGreen = NULL;
 
 //pssetshaderresources
 UINT pssrStartSlot;
+ID3D11ShaderResourceView* pShaderResView;
+ID3D11Resource *Resource;
 D3D11_SHADER_RESOURCE_VIEW_DESC  Descr;
-ID3D11ShaderResourceView* ShaderResourceView;
 D3D11_TEXTURE2D_DESC texdesc;
 
 //psgetConstantbuffers
@@ -61,7 +74,7 @@ bool logger = false;
 int countnum = -1;
 char szString[64];
 
-#define SAFE_RELEASE(p) { if (p) { (p)->Release(); (p) = nullptr; } }
+#define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
 
 //==========================================================================================================================
 
@@ -214,6 +227,40 @@ int Items, Cur_Pos;
 Options sOptions[MAX_ITEMS];
 Menu sMenu;
 
+#include <string>
+#include <fstream>
+void SaveCfg()
+{
+	ofstream fout;
+	fout.open(GetDirectoryFile("w2sf.ini"), ios::trunc);
+	fout << "Item1 " << sOptions[0].Function << endl;
+	fout << "Item2 " << sOptions[1].Function << endl;
+	fout << "Item3 " << sOptions[2].Function << endl;
+	fout << "Item4 " << sOptions[3].Function << endl;
+	fout << "Item5 " << sOptions[4].Function << endl;
+	fout << "Item6 " << sOptions[5].Function << endl;
+	fout << "Item7 " << sOptions[6].Function << endl;
+	fout << "Item8 " << sOptions[7].Function << endl;
+	fout << "Item9 " << sOptions[8].Function << endl;
+	fout.close();
+}
+
+void LoadCfg()
+{
+	ifstream fin;
+	string Word = "";
+	fin.open(GetDirectoryFile("w2sf.ini"), ifstream::in);
+	fin >> Word >> Item1;
+	fin >> Word >> Item2;
+	fin >> Word >> Item3;
+	fin >> Word >> Item4;
+	fin >> Word >> Item5;
+	fin >> Word >> Item6;
+	fin >> Word >> Item7;
+	fin >> Word >> Item8;
+	fin >> Word >> Item9;
+	fin.close();
+}
 
 void JBMenu(void)
 {
@@ -269,7 +316,10 @@ void AddMultiOptionText(LPCWSTR Name, int Pointer, int *Folder)
 void Navigation()
 {
 	if (GetAsyncKeyState(VK_INSERT) & 1)
+	{
+		SaveCfg(); //save settings
 		Visible = !Visible;
+	}
 
 	if (!Visible)
 		return;
@@ -448,18 +498,6 @@ void Draw_Menu()
 #define RED 0xFFFF0000 
 #define GRAY 0xFF2F4F4F
 
-//features deafult settings
-int Folder1 = 1;
-int Item1 = 1; //wallhack
-int Item2 = 1; //chams
-int Item3 = 1; //esp
-int Item4 = 1; //aimbot
-int Item5 = 0; //aimkey 0 = RMouse
-int Item6 = 3; //amsens
-int Item7 = 3; //aimfov
-int Item8 = 0; //aimheight
-int Item9 = 0; //autoshoot
-
 void Do_Menu()
 {
 	AddOption(L"Wallhack", Item1, &Folder1);
@@ -589,9 +627,9 @@ struct AimEspInfo_t
 std::vector<AimEspInfo_t>AimEspInfo;
 
 //w2s
-/*static*/ int WorldViewCBnum = 2;
-/*static*/ int ProjCBnum = 1;
-/*static*/ int matProjnum = 16;
+int WorldViewCBnum = 2;
+int ProjCBnum = 1;
+int matProjnum = 16;
 //Game			WorldViewCBnum		ProjCBnum		matProjnum
 //UT4 Alpha		2					1				16		
 //Fortnite		2					1				16
@@ -617,8 +655,8 @@ void AddModel(ID3D11DeviceContext* pContext)
 	m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 	
-	//if (m_pCurWorldViewCB != NULL && m_pCurProjCB != NULL)//uncomment if a game is crashing while cycling through values
-	//{
+	//if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)//uncomment if a game is crashing
+	//return;
 	
 	float matWorldView[4][4];
 	{
@@ -649,7 +687,6 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
-	//}
 }
 
 //==========================================================================================================================
