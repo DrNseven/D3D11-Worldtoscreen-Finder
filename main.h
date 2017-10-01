@@ -645,13 +645,13 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
 
-	if (m_pCurWorldViewCB == NULL && pWorldViewCB != NULL)
+	if (pWorldViewCB != NULL)
 	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
 
-	if (m_pCurProjCB == NULL && pProjCB != NULL)
+	if (pProjCB != NULL)
 	m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 	
