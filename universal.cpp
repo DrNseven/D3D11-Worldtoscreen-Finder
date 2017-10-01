@@ -399,22 +399,22 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//wallhack/chams
 	//if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
 	if (Stride == countnum)
-	//if (Stride == 24 && Descr.Format == 71)//fortnite
+	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
 		SetDepthStencilState(DISABLED);
-		if (sOptions[1].Function)
+		if (sOptions[1].Function==1)
 		pContext->PSSetShader(psRed, NULL, NULL);
 		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
-		if (sOptions[1].Function)
+		if (sOptions[1].Function==1)
 		pContext->PSSetShader(psGreen, NULL, NULL);
 		SetDepthStencilState(READ_NO_WRITE);
 	}
 
 	//esp/aimbot
-	//if ((sOptions[3].Function==1) || (sOptions[4].Function==1)) //if aimbot/esp option is enabled in menu
+	//if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
 	if(Stride == countnum)
-	//if (Stride == 24 && Descr.Format == 71)//fortnite
+	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > 16000)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
 		AddModel(pContext);//w2s
@@ -425,8 +425,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//ALT + CTRL + L toggles logger
 	if (logger)
 	{
-		//if ((Stride == countnum) && (GetAsyncKeyState(VK_F10) & 1))
-			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
+		if ((Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096) && (GetAsyncKeyState(VK_F10) & 1))//press f10 to log all models on screen
+			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
 		//hold down P key until a texture is wallhacked, press I to log values of those textures
 		if (GetAsyncKeyState('O') & 1) //-
@@ -437,7 +437,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			countnum = -1;
 		if (countnum == Stride)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
-				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && texdesc.Format == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, texdesc.Format, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
+				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
 		if (countnum == Stride)//IndexCount/100)
 		{
