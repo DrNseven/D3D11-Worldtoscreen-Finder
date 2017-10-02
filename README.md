@@ -10,7 +10,7 @@ How to use:
 
 2. Press I to log highlighted models to log.txt.
 
-3. Open log.txt, edit universal.cpp and add your model rec. (Example: if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > ?)
+3. Open log.txt, edit universal.cpp and add your model rec. Example: if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > ?)
 
 4. Use the same model rec for worldtoscreen. (and/or filter out heads for better performance)
 
@@ -22,7 +22,7 @@ How to use:
 
 8. Inject .dll into d3d11 game
 
-The ingame menu key is INSERT, use arrows to navigate. (uncomment options to make toggling work in the menu, remove the "//"
+The ingame menu key is INSERT, use arrows to navigate. (uncomment options to make toggling work, remove the "//"
 Example: //if (sOptions[2].Function == 1) 
 
 
