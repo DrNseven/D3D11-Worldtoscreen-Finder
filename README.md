@@ -2,12 +2,12 @@
 for UT4 Engine games and for few other games. Some other games may need different worldtoscreen function to work.
 
 Tested and working in the following games so far:
-//Game			  WorldViewCBnum		ProjCBnum		matProjnum
-//UT4 Alpha		2					        1				    16		
-//Fortnite		2					        1				    16
-//Outlast 		0					        1				    0 and 16
-//Warframe		0					        0				    0 or 4
-//GTA 5       5 (and other too)	1				    44
+Game			  WorldViewCBnum		ProjCBnum		matProjnum
+UT4 Alpha		2					        1				    16		
+Fortnite		2					        1				    16
+Outlast 		0					        1				    0 and 16
+Warframe		0					        0				    0 or 4
+GTA 5       5 (and other too)	1				    44
 
 ![alt tag](https://github.com/DrNseven/D3D11-Worldtoscreen-Finder/blob/master/w2sloggergithub.jpg)
 
