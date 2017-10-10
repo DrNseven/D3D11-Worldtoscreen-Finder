@@ -199,10 +199,10 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//renderer->draw();
 	//renderer->end();
 
-	//drawfilledrec text
+	//drawfilledrec test
 	//renderer->begin();
 	//XMFLOAT4 rect{ 200.f, 200.f, 200.f, 200.f }; //x, y, sizex, sizey
-	//renderer->drawFilledRect(rect, Color{ 0.9f, 0.9f, 0.15f, 0.95f }); //drawfilledrec text
+	//renderer->drawFilledRect(rect, Color{ 0.9f, 0.9f, 0.15f, 0.95f }); //drawfilledrec test
 	//renderer->draw();
 	//renderer->end();
 	
