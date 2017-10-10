@@ -24,8 +24,7 @@ How to use:
 
 8. Inject .dll into d3d11 game
 
-The ingame menu key is INSERT, use arrows to navigate. (uncomment options to make toggling work, remove the "//"
-Example: //if (sOptions[2].Function == 1) 
+The ingame menu key is INSERT, use arrows to navigate. 
 
 
 Credits: Wu ZhiQiang, dracorx, evolution536
