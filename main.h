@@ -32,8 +32,8 @@ float ScreenCenterY;
 
 //vertex
 ID3D11Buffer *veBuffer;
-UINT Stride = 0;
-UINT veBufferOffset = 0;
+UINT Stride;
+UINT veBufferOffset;
 D3D11_BUFFER_DESC vedesc;
 
 //index
@@ -61,10 +61,6 @@ D3D11_TEXTURE2D_DESC texdesc;
 ID3D11Buffer *pcsBuffer;
 D3D11_BUFFER_DESC pscdesc;
 UINT pscStartSlot;
-
-//vsgetconstantbuffers
-ID3D11Buffer *mConstantBuffers;
-UINT vsConstant_StartSlot;
 
 UINT psStartSlot;
 UINT vsStartSlot;
@@ -514,24 +510,24 @@ void Do_Menu()
 //==========================================================================================================================
 
 //w2s stuff
-struct Vec2
+struct vec2
 {
 	float x, y;
 };
 
-struct Vec3
+struct vec3
 {
 	float x, y, z;
 };
 
-struct Vec4
+struct vec4
 {
 	float x, y, z, w;
 };
 
-static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
+static vec4 Vec4MulMat4x4(const vec4& v, float(*mat4x4)[4])
 {
-	Vec4 o;
+	vec4 o;
 	
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
 	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];
@@ -541,9 +537,9 @@ static Vec4 Vec4MulMat4x4(const Vec4& v, float(*mat4x4)[4])
 	return o;
 }
 
-static Vec4 Vec3MulMat4x4(const Vec3& v, float(*mat4x4)[4])
+static vec4 Vec3MulMat4x4(const vec3& v, float(*mat4x4)[4])
 {
-	Vec4 o;
+	vec4 o;
 	
 	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + mat4x4[3][0];
 	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + mat4x4[3][1];
@@ -553,9 +549,9 @@ static Vec4 Vec3MulMat4x4(const Vec3& v, float(*mat4x4)[4])
 	return o;
 }
 
-static Vec3 Vec3MulMat4x3(const Vec3& v, float(*mat4x3)[3])
+static vec3 Vec3MulMat4x3(const vec3& v, float(*mat4x3)[3])
 {
-	Vec3 o;
+	vec3 o;
 	o.x = v.x * mat4x3[0][0] + v.y * mat4x3[1][0] + v.z * mat4x3[2][0] + mat4x3[3][0];
 	o.y = v.x * mat4x3[0][1] + v.y * mat4x3[1][1] + v.z * mat4x3[2][1] + mat4x3[3][1];
 	o.z = v.x * mat4x3[0][2] + v.y * mat4x3[1][2] + v.z * mat4x3[2][2] + mat4x3[3][2];
@@ -635,6 +631,7 @@ int matProjnum = 16;
 //Fortnite		2					1				16
 //Outlast 		0					1				0 and 16
 //Warframe		0					0				0 or 4
+//GTA 5			0					1				44
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
@@ -645,19 +642,19 @@ void AddModel(ID3D11DeviceContext* pContext)
 
 	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
 
-	if (pWorldViewCB != NULL)
+	if (m_pCurWorldViewCB == NULL && pWorldViewCB != NULL)
 	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
 
-	if (pProjCB != NULL)
+	if (m_pCurProjCB == NULL && pProjCB != NULL)
 	m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 	
 	//if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)//uncomment if a game is crashing
 	//return;
-	
+
 	float matWorldView[4][4];
 	{
 		float* worldview;
@@ -667,8 +664,8 @@ void AddModel(ID3D11DeviceContext* pContext)
 		UnmapBuffer(m_pCurWorldViewCB);
 		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
-	Vec3 v;
-	Vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
+	vec3 v;
+	vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
 	
 	float matProj[4][4];
 	{
@@ -678,21 +675,16 @@ void AddModel(ID3D11DeviceContext* pContext)
 		UnmapBuffer(m_pCurProjCB);
 		SAFE_RELEASE(m_pCurProjCB);
 	}
-	Vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
+	vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
 
 
-	Vec2 o;
+	vec2 o;
 	o.x = ScreenCenterX + ScreenCenterX * vWorldViewProj.x / vWorldViewProj.w;
-	o.y = ScreenCenterY + ScreenCenterY * -vWorldViewProj.y / vWorldViewProj.w;
+	o.y = ScreenCenterY - ScreenCenterY * vWorldViewProj.y / vWorldViewProj.w;
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
 }
 
 //==========================================================================================================================
-
-//void TransformVertToScreenSpace(ID3D11DeviceContext* pContext, ID3D11Buffer* pWorldViewCB, ID3D11Buffer* pProjCB)
-//{
-
-//}
 

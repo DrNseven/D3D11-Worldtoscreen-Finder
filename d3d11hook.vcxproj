@@ -166,6 +166,7 @@
     <ClInclude Include="MinHook\src\hde\table32.h" />
     <ClInclude Include="MinHook\src\hde\table64.h" />
     <ClInclude Include="MinHook\src\trampoline.h" />
+    <ClInclude Include="renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW1FontWrapper\CFW1ColorRGBA.cpp" />

@@ -93,6 +93,9 @@
     <ClInclude Include="MinHook\src\hde\table64.h">
       <Filter>Resource Files\MinHook</Filter>
     </ClInclude>
+    <ClInclude Include="renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="universal.cpp">

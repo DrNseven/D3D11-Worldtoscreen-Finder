@@ -2,12 +2,11 @@
 
 #include <Windows.h>
 #include <vector>
+#include <memory>
 #include <d3d11.h>
-#include <D3D11Shader.h>
 #include <D3Dcompiler.h>//generateshader
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
-#include "assert.h"
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
@@ -54,6 +53,8 @@ IFW1Factory *pFW1Factory = NULL;
 IFW1FontWrapper *pFontWrapper = NULL;
 
 #include "main.h" //helper funcs
+#include "renderer.h" //renderer funcs
+std::unique_ptr<Renderer> renderer;
 
 //==========================================================================================================================
 
@@ -71,15 +72,16 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 {
 	if (firstTime)
 	{
+		firstTime = false;
+
+		PlaySoundA(GetDirectoryFile("dx.wav"), 0, SND_FILENAME | SND_ASYNC | SND_NOSTOP | SND_NODEFAULT);
+
 		//get device
 		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D11Device), (void **)&pDevice)))
 		{
 			pSwapChain->GetDevice(__uuidof(pDevice), (void**)&pDevice);
 			pDevice->GetImmediateContext(&pContext);
 		}
-
-		//load cfg settings
-		LoadCfg();
 		
 		//create depthstencilstate
 		D3D11_DEPTH_STENCIL_DESC  stencilDesc;
@@ -152,30 +154,33 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		hResult = pFW1Factory->CreateFontWrapper(pDevice, L"Tahoma", &pFontWrapper);
 		pFW1Factory->Release();
 
-		firstTime = false;
+		//renderer
+		renderer = std::make_unique<Renderer>(pDevice);
+
+		//load cfg settings
+		LoadCfg();
 	}
-	
-	//viewport
-	pContext->RSGetViewports(&vps, &viewport);
-	ScreenCenterX = viewport.Width / 2.0f;
-	ScreenCenterY = viewport.Height / 2.0f;
 
 	//create rendertarget
 	if (RenderTargetView == NULL)
 	{
 		//Log("called");
+
+		//viewport
+		pContext->RSGetViewports(&vps, &viewport);
+		ScreenCenterX = viewport.Width / 2.0f;
+		ScreenCenterY = viewport.Height / 2.0f;
+
 		ID3D11Texture2D* pBackBuffer = NULL;
-
 		pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-
 		pDevice->CreateRenderTargetView(pBackBuffer, NULL, &RenderTargetView);
 		pBackBuffer->Release();
 	}
 	else //call before you draw
 		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 
-	if (RenderTargetView == NULL)
-		RenderTargetView->Release();
+	//if (RenderTargetView == NULL)
+		//RenderTargetView->Release();
 
 	//shaders
 	if (!psRed)
@@ -187,6 +192,19 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//draw
 	if (pFontWrapper)
 	pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE);
+
+	//drawrect test
+	//renderer->begin();
+	//renderer->drawOutlinedRect(Vec4(100, 100, 50, 50), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f }); //drawrect test
+	//renderer->draw();
+	//renderer->end();
+
+	//drawfilledrec text
+	//renderer->begin();
+	//XMFLOAT4 rect{ 200.f, 200.f, 200.f, 200.f }; //x, y, sizex, sizey
+	//renderer->drawFilledRect(rect, Color{ 0.9f, 0.9f, 0.15f, 0.95f }); //drawfilledrec text
+	//renderer->draw();
+	//renderer->end();
 	
 	//show target amount 
 	//wchar_t reportValueS[256];
@@ -194,11 +212,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//if (pFontWrapper)
 	//pFontWrapper->DrawString(pContext, reportValueS, 14.0f, 16.0f, 30.0f, 0xffff1612, FW1_RESTORESTATE);
 	
-	//if (pWorldViewCB != NULL && pProjCB != NULL)
-	//{
-		//TransformVertToScreenSpace(pContext, pWorldViewCB, pProjCB);
-	//}
-
 	
 	//menu
 	if (IsReady() == false)
@@ -213,23 +226,31 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	}
 	Draw_Menu();
 	Navigation();
-	
 
-	//draw aimpoint/esp
-	//if (sOptions[2].Function == 1) //if esp is enabled in menu
+	//================
+	renderer->begin();
+	//||
+	if (sOptions[2].Function == 1) //if esp is enabled in menu
 	if (AimEspInfo.size() != NULL)
 	{
 		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
 		{
-			//text esp
 			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX < viewport.Width && AimEspInfo[i].vOutY < viewport.Height)
 			{
+				//draw text
 				if (pFontWrapper)
-				pFontWrapper->DrawString(pContext, L"Enemy", 14, (int)AimEspInfo[i].vOutX, (int)AimEspInfo[i].vOutY, 0xffff1612, FW1_RESTORESTATE| FW1_NOGEOMETRYSHADER | FW1_CENTER | FW1_ALIASED);
+				pFontWrapper->DrawString(pContext, L"Enemy", 14, AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 0xffff1612, FW1_RESTORESTATE| FW1_CENTER | FW1_ALIASED);
+
+				//draw box
+				renderer->drawOutlinedRect(Vec4(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 50, 50), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f });
 			}
 		}
 	}
-	
+	//||
+	renderer->draw();
+	renderer->end();
+	//==============
+
 	//RMouse|LMouse|Shift|Ctrl|Alt|Space|X|C
 	if (sOptions[4].Function == 0) Daimkey = VK_RBUTTON;
 	if (sOptions[4].Function == 1) Daimkey = VK_LBUTTON;
@@ -242,7 +263,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	aimheight = sOptions[7].Function;//aimheight
 	
 	//aimbot
-	//if(sOptions[3].Function == 1) //if aimbot is enabled in menu
+	if(sOptions[3].Function == 1) //if aimbot is enabled in menu
 	//if (AimEspInfo.size() != NULL && GetAsyncKeyState(Daimkey) & 0x8000)//warning: GetAsyncKeyState here would cause aimbot not to work for a few people
 	if (AimEspInfo.size() != NULL)
 	{
@@ -305,8 +326,8 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	{
 		if (timeGetTime() - astime >= asdelay)
 		{
-			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 			IsPressed = false;
+			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 			astime = timeGetTime();
 		}
 	}
@@ -397,7 +418,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 
 	//wallhack/chams
-	//if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
+	if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
 	if (Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
@@ -412,7 +433,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	}
 
 	//esp/aimbot
-	//if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
+	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
 	if(Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > 16000)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
