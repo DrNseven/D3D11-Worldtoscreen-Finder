@@ -1,8 +1,5 @@
 //d3d11 w2s for ut4 engine games by n7
 
-//Be aware that replacement technologies for current uses of D3DX11 include DirectXTex and DirectXTK. D3DXMath is replaced by DirectXMath.
-//#include <DirectXMath.h>
-//#pragma comment(lib, "DirectXMath.lib")
 //DX Includes
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -605,8 +602,8 @@ int matProjnum = 16;
 //Outlast 			0					1				0 and 16		1
 //Warframe			0					0				0 or 4			1
 //GTA 5				0					1				44				1
-//Immortal Redneck	0					1				68				2
-//Dungeons 2		0					1				0				2
+//Immortal Redneck		0					1				68				2
+//Dungeons 2			0					1				0				2
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
