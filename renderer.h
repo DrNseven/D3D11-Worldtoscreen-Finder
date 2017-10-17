@@ -235,6 +235,18 @@ inline void safeRelease(Ty &comPtr)
 
 struct Vertex
 {
+	Vertex() = default;
+	Vertex(float x, float y, float z, const Color& col)
+		: pos(x, y, z), col(col)
+	{}
+
+	Vec3 pos;
+	Color col;
+};
+/*
+//wtf error in 32bit
+struct Vertex
+{
     Vertex() = default;
     Vertex(float x, float y, float z, Color col)
         : pos(x, y, z), col(col)
@@ -243,7 +255,7 @@ struct Vertex
     Vec3 pos;
     Color col;
 };
-
+*/
 struct Batch
 {
     Batch(std::size_t count, D3D11_PRIMITIVE_TOPOLOGY topology)

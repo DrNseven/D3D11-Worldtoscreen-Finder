@@ -10,6 +10,7 @@
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
 #include "FW1FontWrapper/FW1FontWrapper.h" //font
+#pragma warning( disable : 4244 )
 
 
 typedef HRESULT(__stdcall *D3D11PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
@@ -179,9 +180,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	else //call before you draw
 		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 
-	//if (RenderTargetView == NULL)
-		//RenderTargetView->Release();
-
 	//shaders
 	if (!psRed)
 	GenerateShader(pDevice, &psRed, 1.0f, 0.0f, 0.0f);
@@ -241,8 +239,14 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 				if (pFontWrapper)
 				pFontWrapper->DrawString(pContext, L"Enemy", 14, AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 0xffff1612, FW1_RESTORESTATE| FW1_CENTER | FW1_ALIASED);
 
+				//wchar_t reportValueS[256];
+				//swprintf_s(reportValueS, L"Dst = %d", (int)AimEspInfo[i].vOutZ);
+				//if (pFontWrapper)
+					//pFontWrapper->DrawString(pContext, reportValueS, 14.0f, AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 0xffffffff, FW1_RESTORESTATE | FW1_CENTER | FW1_ALIASED);
+
 				//draw box
-				renderer->drawOutlinedRect(Vec4(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 50, 50), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f });
+				renderer->drawOutlinedRect(Vec4(AimEspInfo[i].vOutX-25.0f, AimEspInfo[i].vOutY, 50, 50), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f });
+
 			}
 		}
 	}
@@ -277,7 +281,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			float radiusy = (sOptions[6].Function*10.0f) * (ScreenCenterY / 100.0f);
 
 			//get crosshairdistance
-			AimEspInfo[i].CrosshairDst = GetmDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ScreenCenterX, ScreenCenterY);
+			AimEspInfo[i].CrosshairDst = GetDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ScreenCenterX, ScreenCenterY);
 
 			//aim at team 1 or 2 (not needed)
 			//if (aimbot == AimEspInfo[i].iTeam)
@@ -313,8 +317,8 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			{
 				if (!IsPressed)
 				{
-					mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
 					IsPressed = true;
+					mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
 				}
 			}
 		}
@@ -324,7 +328,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//autoshoot off
 	if (sOptions[8].Function==1 && IsPressed)
 	{
-		if (timeGetTime() - astime >= asdelay)
+		if (timeGetTime() - astime >= asdelay)//sOptions[x].Function*100
 		{
 			IsPressed = false;
 			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
@@ -434,7 +438,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//esp/aimbot
 	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
-	if(Stride == countnum)
+		if (Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > 16000)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
@@ -578,7 +582,6 @@ void __stdcall hookD3D11DrawIndexedInstancedIndirect(ID3D11DeviceContext* pConte
 
 void __stdcall hookD3D11VSSetConstantBuffers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppConstantBuffers)
 {
-	if (ppConstantBuffers != NULL)
 		vsStartSlot = StartSlot;
 
 	return phookD3D11VSSetConstantBuffers(pContext, StartSlot, NumBuffers, ppConstantBuffers);
@@ -588,7 +591,6 @@ void __stdcall hookD3D11VSSetConstantBuffers(ID3D11DeviceContext* pContext, UINT
 
 void __stdcall hookD3D11PSSetSamplers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumSamplers, ID3D11SamplerState *const *ppSamplers)
 {
-	if(ppSamplers!=NULL)
 		psStartSlot = StartSlot;
 
 	return phookD3D11PSSetSamplers(pContext, StartSlot, NumSamplers, ppSamplers);
@@ -736,7 +738,7 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[13]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[8]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
 
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[20]) != MH_OK) { return 1; }

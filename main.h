@@ -1,5 +1,11 @@
 //d3d11 w2s for ut4 engine games by n7
 
+//Be aware that replacement technologies for current uses of D3DX11 include DirectXTex and DirectXTK. D3DXMath is replaced by DirectXMath.
+//#include <DirectXMath.h>
+//#pragma comment(lib, "DirectXMath.lib")
+//DX Includes
+#include <DirectXMath.h>
+using namespace DirectX;
 //==========================================================================================================================
 
 //features deafult settings
@@ -525,39 +531,6 @@ struct vec4
 	float x, y, z, w;
 };
 
-static vec4 Vec4MulMat4x4(const vec4& v, float(*mat4x4)[4])
-{
-	vec4 o;
-	
-	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + v.w * mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + v.w * mat4x4[3][1];
-	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + v.w * mat4x4[3][2];
-	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + v.w * mat4x4[3][3];
-
-	return o;
-}
-
-static vec4 Vec3MulMat4x4(const vec3& v, float(*mat4x4)[4])
-{
-	vec4 o;
-	
-	o.x = v.x * mat4x4[0][0] + v.y * mat4x4[1][0] + v.z * mat4x4[2][0] + mat4x4[3][0];
-	o.y = v.x * mat4x4[0][1] + v.y * mat4x4[1][1] + v.z * mat4x4[2][1] + mat4x4[3][1];
-	o.z = v.x * mat4x4[0][2] + v.y * mat4x4[1][2] + v.z * mat4x4[2][2] + mat4x4[3][2];
-	o.w = v.x * mat4x4[0][3] + v.y * mat4x4[1][3] + v.z * mat4x4[2][3] + mat4x4[3][3];
-	
-	return o;
-}
-
-static vec3 Vec3MulMat4x3(const vec3& v, float(*mat4x3)[3])
-{
-	vec3 o;
-	o.x = v.x * mat4x3[0][0] + v.y * mat4x3[1][0] + v.z * mat4x3[2][0] + mat4x3[3][0];
-	o.y = v.x * mat4x3[0][1] + v.y * mat4x3[1][1] + v.z * mat4x3[2][1] + mat4x3[3][1];
-	o.z = v.x * mat4x3[0][2] + v.y * mat4x3[1][2] + v.z * mat4x3[2][2] + mat4x3[3][2];
-	return o;
-}
-
 void MapBuffer(ID3D11Buffer* pStageBuffer, void** ppData, UINT* pByteWidth)
 {
 	D3D11_MAPPED_SUBRESOURCE subRes;
@@ -610,14 +583,14 @@ ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 }
 
 //get distance
-float GetmDst(float Xx, float Yy, float xX, float yY)
+float GetDst(float Xx, float Yy, float xX, float yY)
 {
 	return sqrt((yY - Yy) * (yY - Yy) + (xX - Xx) * (xX - Xx));
 }
 
 struct AimEspInfo_t
 {
-	float vOutX, vOutY;
+	float vOutX, vOutY, vOutZ;
 	float CrosshairDst;
 };
 std::vector<AimEspInfo_t>AimEspInfo;
@@ -626,34 +599,36 @@ std::vector<AimEspInfo_t>AimEspInfo;
 int WorldViewCBnum = 2;
 int ProjCBnum = 1;
 int matProjnum = 16;
-//Game			WorldViewCBnum		ProjCBnum		matProjnum
-//UT4 Alpha		2					1				16		
-//Fortnite		2					1				16
-//Outlast 		0					1				0 and 16
-//Warframe		0					0				0 or 4
-//GTA 5			0					1				44
+//Game				WorldViewCBnum		ProjCBnum		matProjnum		w2s
+//UT4 Alpha			2					1				16				1
+//Fortnite			2					1				16				1
+//Outlast 			0					1				0 and 16		1
+//Warframe			0					0				0 or 4			1
+//GTA 5				0					1				44				1
+//Immortal Redneck	0					1				68				2
+//Dungeons 2		0					1				0				2
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
 ID3D11Buffer* m_pCurProjCB = NULL;
 void AddModel(ID3D11DeviceContext* pContext)
 {
-	//Warning, this is NOT optimized:
+	//Warning: this is NOT optimized
 
 	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
 
 	if (m_pCurWorldViewCB == NULL && pWorldViewCB != NULL)
-	m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
+		m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
 
 	if (m_pCurProjCB == NULL && pProjCB != NULL)
-	m_pCurProjCB = CopyBufferToCpu(pProjCB);
+		m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
-	
-	//if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)//uncomment if a game is crashing
-	//return;
+
+	if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)//uncomment if a game is crashing
+		return;
 
 	float matWorldView[4][4];
 	{
@@ -664,9 +639,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 		UnmapBuffer(m_pCurWorldViewCB);
 		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
-	vec3 v;
-	vec4 vWorldView = Vec3MulMat4x4(v, matWorldView);
-	
+
 	float matProj[4][4];
 	{
 		float *proj;
@@ -675,15 +648,57 @@ void AddModel(ID3D11DeviceContext* pContext)
 		UnmapBuffer(m_pCurProjCB);
 		SAFE_RELEASE(m_pCurProjCB);
 	}
-	vec4 vWorldViewProj = Vec4MulMat4x4(vWorldView, matProj);
 
+	
+	//======================
+	//w2s 1
+	//vecproject w2s for some games (ut4)
+	DirectX::XMVECTOR pIn { 0 };
+	DirectX::XMFLOAT3 pOut2d;
+
+	DirectX::XMMATRIX pWorld = DirectX::XMMatrixIdentity();
+
+	DirectX::XMVECTOR pOut = DirectX::XMVector3Project(pIn, 0, 0, viewport.Width, viewport.Height, 0, 1, (FXMMATRIX)*matProj, (FXMMATRIX)*matWorldView, pWorld);
+
+	DirectX::XMStoreFloat3(&pOut2d, pOut);
 
 	vec2 o;
-	o.x = ScreenCenterX + ScreenCenterX * vWorldViewProj.x / vWorldViewProj.w;
-	o.y = ScreenCenterY - ScreenCenterY * vWorldViewProj.y / vWorldViewProj.w;
-
+	if (pOut2d.z < 1.0f)
+	{
+		o.x = pOut2d.x;
+		o.y = pOut2d.y;
+	}
+	//AimEspInfo_t pAimEspInfo = { static_cast<float>(pOut.m128_f32[0]), static_cast<float>(pOut.m128_f32[1]) };
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
 	AimEspInfo.push_back(pAimEspInfo);
+	//======================
+	
+	/*
+	//======================
+	//w2s 2
+	//vectransform w2s for some unity games
+	D3DXVECTOR3 Pos;
+	D3DXMATRIX ViewProjectionMatrix;
+	float x; float y;
+
+	D3DXVECTOR4 temp, out;
+	D3DXMatrixMultiply(&ViewProjectionMatrix, (D3DXMATRIX*)&matWorldView, (D3DXMATRIX*)&matProj);
+
+	D3DXVec4Transform(&temp, &D3DXVECTOR4(Pos.x, Pos.y, Pos.z, 1), &ViewProjectionMatrix);
+
+	float tempInvW2 = 1.0f / temp.w;
+
+	out.x = (1.0f + (temp.x * tempInvW2))  * viewport.Width / 2.0f;
+	out.y = (1.0f + (temp.y * tempInvW2))  * viewport.Height / 2.0f;//or (1.0f -
+	out.z = temp.z;
+
+	x = out.x;
+	y = out.y;
+
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(x), static_cast<float>(y) };
+	AimEspInfo.push_back(pAimEspInfo);
+	//======================
+	*/
 }
 
 //==========================================================================================================================
