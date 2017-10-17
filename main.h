@@ -597,13 +597,13 @@ int WorldViewCBnum = 2;
 int ProjCBnum = 1;
 int matProjnum = 16;
 //Game				WorldViewCBnum		ProjCBnum		matProjnum		w2s
-//UT4 Alpha			2					1				16				1
-//Fortnite			2					1				16				1
-//Outlast 			0					1				0 and 16		1
-//Warframe			0					0				0 or 4			1
-//GTA 5				0					1				44				1
-//Immortal Redneck		0					1				68				2
-//Dungeons 2			0					1				0				2
+//UT4 Alpha			2			1			16			1
+//Fortnite			2			1			16			1
+//Outlast 			0			1			0 and 16		1
+//Warframe			0			0			0 or 4			1
+//GTA 5				0			1			44			1
+//Immortal Redneck		0			1			68			2
+//Dungeons 2			0			1			0			2
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
