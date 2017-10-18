@@ -172,10 +172,19 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		ScreenCenterX = viewport.Width / 2.0f;
 		ScreenCenterY = viewport.Height / 2.0f;
 
-		ID3D11Texture2D* pBackBuffer = NULL;
-		pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-		pDevice->CreateRenderTargetView(pBackBuffer, NULL, &RenderTargetView);
-		pBackBuffer->Release();
+		ID3D11Texture2D* backbuffer = NULL;
+		hr = pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backbuffer);
+		if (FAILED(hr)) {
+			Log("Failed to get BackBuffer");
+			return hr;
+		}
+
+		hr = pDevice->CreateRenderTargetView(backbuffer, NULL, &RenderTargetView);
+		backbuffer->Release();
+		if (FAILED(hr)) {
+			Log("Failed to get RenderTarget");
+			return hr;
+		}
 	}
 	else //call before you draw
 		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
@@ -375,21 +384,21 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 		wchar_t reportValue[256];
 		swprintf_s(reportValue, L"(Keys:-O P+ I=Log) countnum = %d", countnum);
-		pFontWrapper->DrawString(pContext, reportValue, 20.0f, 220.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
+		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 		wchar_t reportValueA[256];
 		swprintf_s(reportValueA, L"(Keys:-Z U+) WorldViewCBnum = %d", WorldViewCBnum);
-		pFontWrapper->DrawString(pContext, reportValueA, 20.0f, 220.0f, 120.0f, 0xffffffff, FW1_RESTORESTATE);
+		pFontWrapper->DrawString(pContext, reportValueA, 16.0f, 320.0f, 120.0f, 0xffffffff, FW1_RESTORESTATE);
 
 		wchar_t reportValueB[256];
 		swprintf_s(reportValueB, L"(Keys:-H J+) ProjCBnum = %d", ProjCBnum);
-		pFontWrapper->DrawString(pContext, reportValueB, 20.0f, 220.0f, 140.0f, 0xffffffff, FW1_RESTORESTATE);
+		pFontWrapper->DrawString(pContext, reportValueB, 16.0f, 320.0f, 140.0f, 0xffffffff, FW1_RESTORESTATE);
 
 		wchar_t reportValueC[256];
 		swprintf_s(reportValueC, L"(Keys:-N M+) matProjnum = %d", matProjnum);
-		pFontWrapper->DrawString(pContext, reportValueC, 20.0f, 220.0f, 160.0f, 0xffffffff, FW1_RESTORESTATE);
+		pFontWrapper->DrawString(pContext, reportValueC, 16.0f, 320.0f, 160.0f, 0xffffffff, FW1_RESTORESTATE);
 
-		pFontWrapper->DrawString(pContext, L"F9 = log drawfunc", 20.0f, 220.0f, 180.0f, 0xffffffff, FW1_RESTORESTATE);
+		pFontWrapper->DrawString(pContext, L"F9 = log drawfunc", 16.0f, 320.0f, 180.0f, 0xffffffff, FW1_RESTORESTATE);
 	}
 	
 	return phookD3D11Present(pSwapChain, SyncInterval, Flags);
@@ -423,7 +432,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//wallhack/chams
 	if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
-	if (Stride == countnum)
+	if(Stride == countnum && Descr.Format > 0)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
@@ -438,7 +447,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//esp/aimbot
 	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
-		if (Stride == countnum)
+	if (Stride == countnum && Descr.Format > 0)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > 16000)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
@@ -460,11 +469,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			countnum++;
 		if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState('9') & 1)) //reset, set to -1
 			countnum = -1;
-		if (countnum == Stride)//IndexCount/100)
+		if (Stride == countnum && Descr.Format > 0)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
 				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
-		if (countnum == Stride)//IndexCount/100)
+		if (Stride == countnum && Descr.Format > 0)//IndexCount/100)
 		{
 			SetDepthStencilState(DISABLED);
 			//pContext->RSSetState(rwState);    //wireframe
@@ -485,12 +494,20 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 {
 	pssrStartSlot = StartSlot;
 
-	//resources
-	if(ppShaderResourceViews != NULL)
-	pShaderResView = *ppShaderResourceViews;
-	if (pShaderResView!=NULL)
+	for (UINT j = 0; j < NumViews; j++)
 	{
-		pShaderResView->GetDesc(&Descr);
+		//resources loop
+		ID3D11ShaderResourceView* pShaderResView = ppShaderResourceViews[j];
+		if (pShaderResView)
+		{
+			pShaderResView->GetDesc(&Descr);
+
+			//unstable in some games
+			//ID3D11Resource *Resource;
+			//pShaderResView->GetResource(&Resource);
+			//ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
+			//Texture->GetDesc(&texdesc);
+		}
 	}
 
 	/*
@@ -686,8 +703,10 @@ DWORD __stdcall InitializeHook(LPVOID)
 	
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[12], hookD3D11DrawIndexed, reinterpret_cast<void**>(&phookD3D11DrawIndexed)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
+	
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[8], hookD3D11PSSetShaderResources, reinterpret_cast<void**>(&phookD3D11PSSetShaderResources)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
+	
 	if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[24], hookD3D11CreateQuery, reinterpret_cast<void**>(&phookD3D11CreateQuery)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
 
@@ -705,7 +724,7 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[10], hookD3D11PSSetSamplers, reinterpret_cast<void**>(&phookD3D11PSSetSamplers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
-
+	
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
 

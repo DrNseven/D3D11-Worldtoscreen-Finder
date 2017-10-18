@@ -1,5 +1,8 @@
 //d3d11 w2s for ut4 engine games by n7
 
+//Be aware that replacement technologies for current uses of D3DX11 include DirectXTex and DirectXTK. D3DXMath is replaced by DirectXMath.
+//#include <DirectXMath.h>
+//#pragma comment(lib, "DirectXMath.lib")
 //DX Includes
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -70,10 +73,11 @@ UINT vsStartSlot;
 
 //used for logging/cycling through values
 bool logger = false;
-int countnum = -1;
+int countnum = 32;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
+HRESULT hr;
 
 //==========================================================================================================================
 
@@ -153,7 +157,7 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 
 	ID3DBlob* d3dErrorMsgBlob;
 
-	HRESULT hr = D3DCompile(szPixelShader, sizeof(szPixelShader), "shader", NULL, NULL, "main", "ps_4_0", NULL, NULL, &pBlob, &d3dErrorMsgBlob);
+	HRESULT hr = D3DCompile(szPixelShader, sizeof(szPixelShader), "shader", NULL, NULL, "main", "ps_5_0", NULL, NULL, &pBlob, &d3dErrorMsgBlob);
 
 	if (FAILED(hr))
 		return hr;
@@ -593,17 +597,18 @@ struct AimEspInfo_t
 std::vector<AimEspInfo_t>AimEspInfo;
 
 //w2s
-int WorldViewCBnum = 2;
+int WorldViewCBnum = 0;
 int ProjCBnum = 1;
-int matProjnum = 16;
+int matProjnum = 0;
 //Game				WorldViewCBnum		ProjCBnum		matProjnum		w2s
-//UT4 Alpha			2			1			16			1
-//Fortnite			2			1			16			1
-//Outlast 			0			1			0 and 16		1
-//Warframe			0			0			0 or 4			1
-//GTA 5				0			1			44			1
-//Immortal Redneck		0			1			68			2
-//Dungeons 2			0			1			0			2
+//UT4 Alpha			2					1				16				1
+//Fortnite			2					1				16				1
+//Outlast 			0					1				0 and 16		1
+//Warframe			0					0				0 or 4			1
+//GTA 5				0					1				44				1
+//Immortal Redneck	0					1				68				2
+//Dungeons 2		0					1				0				2
+//Bioshock infinite 0					1				0				1
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
