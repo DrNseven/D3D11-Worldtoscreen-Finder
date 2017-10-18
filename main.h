@@ -1,8 +1,5 @@
 //d3d11 w2s for ut4 engine games by n7
 
-//Be aware that replacement technologies for current uses of D3DX11 include DirectXTex and DirectXTK. D3DXMath is replaced by DirectXMath.
-//#include <DirectXMath.h>
-//#pragma comment(lib, "DirectXMath.lib")
 //DX Includes
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -73,7 +70,7 @@ UINT vsStartSlot;
 
 //used for logging/cycling through values
 bool logger = false;
-int countnum = 32;
+int countnum = -1;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }

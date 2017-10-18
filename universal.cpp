@@ -347,41 +347,9 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 
 	//logger
-	if (GetAsyncKeyState(VK_MENU) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(0x4C) & 1) //ALT + CTRL + L toggles logger
-		logger = !logger;
 	//if ((logger && pFontWrapper) && (Begin(60)))
 	if (logger && pFontWrapper) //&& countnum >= 0)
 	{
-		//bruteforce WorldViewCBnum
-		if (GetAsyncKeyState('Z') & 1) //-
-			WorldViewCBnum--;
-		if (GetAsyncKeyState('U') & 1) //+
-			WorldViewCBnum++;
-		if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
-			WorldViewCBnum = 0;
-		if (WorldViewCBnum < 0)
-			WorldViewCBnum = 0;
-
-		//bruteforce ProjCBnum
-		if (GetAsyncKeyState('H') & 1) //-
-			ProjCBnum--;
-		if (GetAsyncKeyState('J') & 1) //+
-			ProjCBnum++;
-		if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
-			ProjCBnum = 0;
-		if (ProjCBnum < 0)
-			ProjCBnum = 0;
-
-		//bruteforce matProjnum
-		if (GetAsyncKeyState('N') & 1) //-
-			matProjnum--;
-		if (GetAsyncKeyState('M') & 1) //+
-			matProjnum++;
-		if (GetAsyncKeyState(0x39) & 1) //9 reset, set to 0
-			matProjnum = 0;
-		if (matProjnum < 0)
-			matProjnum = 0;
-
 		wchar_t reportValue[256];
 		swprintf_s(reportValue, L"(Keys:-O P+ I=Log) countnum = %d", countnum);
 		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
@@ -432,7 +400,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//wallhack/chams
 	if (sOptions[0].Function==1||sOptions[1].Function==1) //if wallhack/chams option is enabled in menu
-	if(Stride == countnum && Descr.Format > 0)
+	if(Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
@@ -447,7 +415,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//esp/aimbot
 	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
-	if (Stride == countnum && Descr.Format > 0)
+	if (Stride == countnum)
 	//if (Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096 && indesc.ByteWidth > 16000)//fortnite
 	//if (Stride == ? && indesc.ByteWidth ? && indesc.ByteWidth ? && Descr.Format .. ) //later here you do better model rec, values are different in every game
 	{
@@ -462,18 +430,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		if ((Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096) && (GetAsyncKeyState(VK_F10) & 1))//press f10 to log all models on screen
 			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
-		//hold down P key until a texture is wallhacked, press I to log values of those textures
-		if (GetAsyncKeyState('O') & 1) //-
-			countnum--;
-		if (GetAsyncKeyState('P') & 1) //+
-			countnum++;
-		if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState('9') & 1)) //reset, set to -1
-			countnum = -1;
-		if (Stride == countnum && Descr.Format > 0)//IndexCount/100)
+		if (Stride == countnum)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
 				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
 
-		if (Stride == countnum && Descr.Format > 0)//IndexCount/100)
+		if (Stride == countnum)//IndexCount/100)
 		{
 			SetDepthStencilState(DISABLED);
 			//pContext->RSSetState(rwState);    //wireframe
@@ -508,6 +469,50 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 			//ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
 			//Texture->GetDesc(&texdesc);
 		}
+	}
+
+	//logger
+	if (GetAsyncKeyState(VK_MENU) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(0x4C) & 1) //ALT + CTRL + L toggles logger
+		logger = !logger;
+	if (logger && pFontWrapper) //&& countnum >= 0)
+	{
+		//hold down P key until a texture is wallhacked, press I to log values of those textures
+		if (GetAsyncKeyState('O') & 1) //-
+			countnum--;
+		if (GetAsyncKeyState('P') & 1) //+
+			countnum++;
+		if ((GetAsyncKeyState(VK_MENU)) && (GetAsyncKeyState('9') & 1)) //reset, set to -1
+			countnum = -1;
+
+		//bruteforce WorldViewCBnum
+		if (GetAsyncKeyState('Z') & 1) //-
+			WorldViewCBnum--;
+		if (GetAsyncKeyState('U') & 1) //+
+			WorldViewCBnum++;
+		if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
+			WorldViewCBnum = 0;
+		if (WorldViewCBnum < 0)
+			WorldViewCBnum = 0;
+
+		//bruteforce ProjCBnum
+		if (GetAsyncKeyState('H') & 1) //-
+			ProjCBnum--;
+		if (GetAsyncKeyState('J') & 1) //+
+			ProjCBnum++;
+		if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
+			ProjCBnum = 0;
+		if (ProjCBnum < 0)
+			ProjCBnum = 0;
+
+		//bruteforce matProjnum
+		if (GetAsyncKeyState('N') & 1) //-
+			matProjnum--;
+		if (GetAsyncKeyState('M') & 1) //+
+			matProjnum++;
+		if (GetAsyncKeyState(0x39) & 1) //9 reset, set to 0
+			matProjnum = 0;
+		if (matProjnum < 0)
+			matProjnum = 0;
 	}
 
 	/*
@@ -551,7 +556,70 @@ void __stdcall hookD3D11DrawIndexedInstanced(ID3D11DeviceContext* pContext, UINT
 {
 	if (GetAsyncKeyState(VK_F9) & 1)
 		Log("DrawIndexedInstanced called");
+	/*
+	//get stride & vdesc.ByteWidth
+	pContext->IAGetVertexBuffers(0, 1, &veBuffer, &Stride, &veBufferOffset);
+	if (veBuffer)
+		veBuffer->GetDesc(&vedesc);
+	if (veBuffer != NULL) { veBuffer->Release(); veBuffer = NULL; }
 
+	//get indesc.ByteWidth
+	pContext->IAGetIndexBuffer(&inBuffer, &inFormat, &inOffset);
+	if (inBuffer)
+		inBuffer->GetDesc(&indesc);
+	if (inBuffer != NULL) { inBuffer->Release(); inBuffer = NULL; }
+
+	//get pscdesc.ByteWidth
+	pContext->PSGetConstantBuffers(pscStartSlot, 1, &pcsBuffer);
+	if (pcsBuffer)
+		pcsBuffer->GetDesc(&pscdesc);
+	if (pcsBuffer != NULL) { pcsBuffer->Release(); pcsBuffer = NULL; }
+
+
+	//wallhack/chams
+	if (sOptions[0].Function == 1 || sOptions[1].Function == 1) //if wallhack/chams option is enabled in menu
+	if (Stride == countnum)
+	{
+		SetDepthStencilState(DISABLED);
+		if (sOptions[1].Function == 1)
+		pContext->PSSetShader(psRed, NULL, NULL);
+		phookD3D11DrawIndexedInstanced(pContext, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+		if (sOptions[1].Function == 1)
+		pContext->PSSetShader(psGreen, NULL, NULL);
+		SetDepthStencilState(READ_NO_WRITE);
+	}
+
+	//esp/aimbot
+	if ((sOptions[2].Function == 1) || (sOptions[3].Function == 1)) //if esp/aimbot option is enabled in menu
+	if (Stride == countnum)
+	{
+		AddModel(pContext);//w2s
+	}
+
+
+	//small bruteforce logger
+	//ALT + CTRL + L toggles logger
+	if (logger)
+	{
+		if ((Stride == 24 && Descr.Format == 71 && pscdesc.ByteWidth == 4096) && (GetAsyncKeyState(VK_F10) & 1))//press f10 to log all models on screen
+			Log("Stride == %d && IndexCountPerInstance == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCountPerInstance, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
+
+		if (Stride == countnum)//IndexCountPerInstance/100)
+			if (GetAsyncKeyState('I') & 1)
+				Log("Stride == %d && IndexCountPerInstance == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d", Stride, IndexCountPerInstance, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot);
+
+		if (Stride == countnum)//IndexCountPerInstance/100)
+		{
+			SetDepthStencilState(DISABLED);
+			//pContext->RSSetState(rwState);    //wireframe
+			pContext->PSSetShader(psRed, NULL, NULL);
+			phookD3D11DrawIndexedInstanced(pContext, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+			SetDepthStencilState(READ_NO_WRITE);
+			//pContext->RSSetState(rsState);    //solid
+			pContext->PSSetShader(psGreen, NULL, NULL);
+		}
+	}
+	*/
 	return phookD3D11DrawIndexedInstanced(pContext, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
 
