@@ -19,10 +19,10 @@ int Item9 = 0; //sOptions[8].Function //autoshoot
 
 //globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
-int aimheight = 46;				//aim height value
+int aimheight = 46;			//aim height value
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
-DWORD astime = timeGetTime();	//autoshoot timer
+DWORD astime = timeGetTime();		//autoshoot timer
 
 //init only once
 bool firstTime = true;
@@ -598,14 +598,15 @@ int WorldViewCBnum = 0;
 int ProjCBnum = 1;
 int matProjnum = 0;
 //Game				WorldViewCBnum		ProjCBnum		matProjnum		w2s
-//UT4 Alpha			2					1				16				1
-//Fortnite			2					1				16				1
-//Outlast 			0					1				0 and 16		1
-//Warframe			0					0				0 or 4			1
-//GTA 5				0					1				44				1
-//Immortal Redneck	0					1				68				2
-//Dungeons 2		0					1				0				2
-//Bioshock infinite 0					1				0				1
+//UT4 Alpha			2			1			16			1
+//Fortnite			2			1			16			1
+//Outlast 			0			1			0 and 16		1
+//Warframe			0			0			0 or 4			1
+//GTA 5				0			1			44			1
+//Immortal Redneck		0			1			68			2
+//Dungeons 2			0			1			0			2
+//Bioshock infinite 		0			1			0			1
+//Serious Sam Fusion 2017 	0			1			0			3
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
@@ -695,6 +696,35 @@ void AddModel(ID3D11DeviceContext* pContext)
 	y = out.y;
 
 	AimEspInfo_t pAimEspInfo = { static_cast<float>(x), static_cast<float>(y) };
+	AimEspInfo.push_back(pAimEspInfo);
+	//======================
+	*/
+	
+	/*
+	//======================
+	//w2s 3
+	D3DXMATRIX matrix, m1;
+	D3DXVECTOR4 position;
+	D3DXVECTOR4 input;
+
+	//input.y = (float)aimheight;
+	D3DXMatrixMultiply(&matrix, (D3DXMATRIX*)&matWorldView, (D3DXMATRIX*)&matProj);
+
+	D3DXMatrixTranspose(&matrix, &matrix);
+	D3DXVec4Transform(&position, &input, &matrix);
+	//or
+	//D3DXMatrixTranspose(&m1, &matrix);
+	//D3DXVec4Transform(&position, &input, &m1);
+
+	position.x = input.x * matrix._11 + input.y * matrix._21 + input.z * matrix._31 + matrix._41;
+	position.y = input.x * matrix._12 + input.y * matrix._22 + input.z * matrix._32 + matrix._42;
+	position.z = input.x * matrix._13 + input.y * matrix._23 + input.z * matrix._33 + matrix._43;
+	position.w = input.x * matrix._14 + input.y * matrix._24 + input.z * matrix._34 + matrix._44;
+
+	float xx = ((position.x / position.w) * (viewport.Width / 2)) + (viewport.Width / 2);
+	float yy = (viewport.Height / 2) - ((position.y / position.w) * (viewport.Height / 2));
+
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy) };
 	AimEspInfo.push_back(pAimEspInfo);
 	//======================
 	*/
