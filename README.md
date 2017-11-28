@@ -1,5 +1,5 @@
 # D3D11-Worldtoscreen-Finder 
-for UT4 Engine games and for few other games. Some other games may need different worldtoscreen function to work.
+for some games. Other games may need different worldtoscreen function to work.
 
 ![alt tag](https://github.com/DrNseven/D3D11-Worldtoscreen-Finder/blob/master/w2s.jpg)
 
