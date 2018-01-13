@@ -107,7 +107,7 @@ UINT matrixStartSlot11 = 0;
 
 //used for logging/cycling through values
 bool logger = false;
-UINT countnum = -1;
+UINT countnum = 40;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
@@ -691,7 +691,7 @@ void showMatrixStartslot()
 		pFontWrapper->DrawString(pContext, MatrixValue4, 16.0f, 140.0f, 160.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue5[256];
-	swprintf_s(MatrixValue5, L"matrixStartSlot5 = %d", matrixStartSlot5);
+	swprintf_s(MatrixValue5, L"matrixCBnum = %d", matrixStartSlot5);
 	if (matrixStartSlot5 == 5)
 		pFontWrapper->DrawString(pContext, MatrixValue5, 16.0f, 140.0f, 180.0f, 0xff00ff00, FW1_RESTORESTATE);
 
@@ -711,7 +711,7 @@ void showMatrixStartslot()
 		pFontWrapper->DrawString(pContext, MatrixValue8, 16.0f, 140.0f, 240.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue9[256];
-	swprintf_s(MatrixValue9, L"matrixStartSlot = %d", matrixStartSlot9);
+	swprintf_s(MatrixValue9, L"matrixCBnum = %d", matrixStartSlot9);
 	if (matrixStartSlot9 == 9)
 		pFontWrapper->DrawString(pContext, MatrixValue9, 16.0f, 140.0f, 260.0f, 0xff00ff00, FW1_RESTORESTATE);
 
