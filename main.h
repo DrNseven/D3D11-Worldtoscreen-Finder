@@ -107,7 +107,7 @@ UINT matrixStartSlot11 = 0;
 
 //used for logging/cycling through values
 bool logger = false;
-UINT countnum = 40;
+UINT countnum = -1;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
