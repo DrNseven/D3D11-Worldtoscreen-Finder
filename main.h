@@ -1,8 +1,9 @@
-//d3d11 w2s for ut4 engine games by n7
+//d3d11 w2s for some games by n7
 
 //DX Includes
 #include <DirectXMath.h>
 using namespace DirectX;
+
 //==========================================================================================================================
 
 //features deafult settings
@@ -12,20 +13,24 @@ int Item2 = 1; //sOptions[1].Function //chams
 int Item3 = 1; //sOptions[2].Function //esp
 int Item4 = 1; //sOptions[3].Function //aimbot
 int Item5 = 0; //sOptions[4].Function //aimkey 0 = RMouse
-int Item6 = 3; //sOptions[5].Function //amsens
+int Item6 = 3; //sOptions[5].Function //aimsens
 int Item7 = 3; //sOptions[6].Function //aimfov
 int Item8 = 0; //sOptions[7].Function //aimheight
 int Item9 = 0; //sOptions[8].Function //autoshoot
+int Item10 = 1; //sOptions[9].Function //crosshair
+int Item11 = 2; //sOptions[10].Function //preaim
 
 //globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
-int aimheight = 46;			//aim height value
+int aimheight = 0;				//aim height value
+int preaim = 0;					//praim to not aim behind
 unsigned int asdelay = 90;		//use x-999 (shoot for xx millisecs, looks more legit)
 bool IsPressed = false;			//
-DWORD astime = timeGetTime();		//autoshoot timer
+DWORD astime = timeGetTime();	//autoshoot timer
 
 //init only once
 bool firstTime = true;
+bool firstTime2 = true;
 
 //viewport
 UINT vps = 1;
@@ -34,6 +39,8 @@ float ScreenCenterX;
 float ScreenCenterY;
 
 //vertex
+UINT veStartSlot;
+UINT veNumBuffers;
 ID3D11Buffer *veBuffer;
 UINT Stride;
 UINT veBufferOffset;
@@ -61,16 +68,46 @@ D3D11_SHADER_RESOURCE_VIEW_DESC  Descr;
 D3D11_TEXTURE2D_DESC texdesc;
 
 //psgetConstantbuffers
-ID3D11Buffer *pcsBuffer;
-D3D11_BUFFER_DESC pscdesc;
 UINT pscStartSlot;
+UINT pscNumBuffers;
+ID3D11Buffer *pscBuffer;
+D3D11_BUFFER_DESC pscdesc;
+
+//vsgetconstantbuffers
+ID3D11Buffer *vsBuffer;
+UINT vsNumBuffers;
+D3D11_BUFFER_DESC vsdesc;
 
 UINT psStartSlot;
 UINT vsStartSlot;
 
+//create texture
+ID3D11Texture2D* texGreen = nullptr;
+ID3D11Texture2D* texRed = nullptr;
+
+//create shaderresourcevew
+ID3D11ShaderResourceView* texSRVg;
+ID3D11ShaderResourceView* texSRVr;
+
+//create samplerstate
+ID3D11SamplerState *pSamplerState;
+
+UINT matrixStartSlot0 = 0;
+UINT matrixStartSlot1 = 0;
+UINT matrixStartSlot2 = 0;
+UINT matrixStartSlot3 = 0;
+UINT matrixStartSlot4 = 0;
+UINT matrixStartSlot5 = 0;
+UINT matrixStartSlot6 = 0;
+UINT matrixStartSlot7 = 0;
+UINT matrixStartSlot8 = 0;
+UINT matrixStartSlot9 = 0;
+UINT matrixStartSlot10 = 0;
+UINT matrixStartSlot11 = 0;
+
 //used for logging/cycling through values
 bool logger = false;
-int countnum = -1;
+UINT countnum = -1;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
@@ -106,36 +143,37 @@ void Log(const char *fmt, ...)
 	logfile.close();
 }
 
-#include <chrono>
-using namespace std::chrono;
-
-high_resolution_clock::time_point lastTime = high_resolution_clock::time_point();
-
-bool Begin(const int fps)
-{
-
-	auto now = high_resolution_clock::now();
-	auto millis = duration_cast<milliseconds>(now - lastTime).count();
-
-	auto time = static_cast<int>(1.f / fps * std::milli::den);
-	auto milliPerFrame = duration<long, std::milli>(time).count();
-	if (millis >= milliPerFrame)
-	{
-		lastTime = now;
-		return true;
-	}
-	return false;
-}
-
 //==========================================================================================================================
 
 //generate shader func
 HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, float r, float g, float b)
 {
+	/*
+	//texture sample chams
+	const char szCast[] =
+		"struct PS_INPUT\
+            {\
+            float4 position : SV_POSITION;\
+            float4 color : COLOR0;\
+            float2 uv  : TEXCOORD0;\
+            };\
+            sampler sampler0;\
+            Texture2D texture0;\
+            \
+            float4 main(PS_INPUT input) : SV_Target\
+            {\
+            float4 out_color = input.color.bgra + texture0.Sample(sampler0, input.uv); \
+			out_color.g = %f; \
+			out_color.a = 1.0f; \
+            return out_color; \
+            }";
+	*/
+	
+	//default
 	char szCast[] = "struct VS_OUT"
 		"{"
 		" float4 Position : SV_Position;"
-		" float4 Color : COLOR0;"
+		" float4 Color : COLOR1;"
 		"};"
 
 		"float4 main( VS_OUT input ) : SV_Target"
@@ -147,6 +185,7 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 		" fake.b = %f;"
 		" return fake;"
 		"}";
+	
 	ID3D10Blob* pBlob;
 	char szPixelShader[1000];
 
@@ -154,7 +193,7 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 
 	ID3DBlob* d3dErrorMsgBlob;
 
-	HRESULT hr = D3DCompile(szPixelShader, sizeof(szPixelShader), "shader", NULL, NULL, "main", "ps_5_0", NULL, NULL, &pBlob, &d3dErrorMsgBlob);
+	HRESULT hr = D3DCompile(szPixelShader, sizeof(szPixelShader), "shader", NULL, NULL, "main", "ps_4_0", NULL, NULL, &pBlob, &d3dErrorMsgBlob);
 
 	if (FAILED(hr))
 		return hr;
@@ -168,6 +207,14 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 }
 
 //==========================================================================================================================
+
+//custom ds
+ID3D11DepthStencilState* depthStencilState;
+ID3D11DepthStencilState* depthStencilStatefalse;
+
+//alternative wh
+UINT stencilRef = 0;
+ID3D11DepthStencilState* pDepthStencilState = NULL;
 
 //wh
 char *state;
@@ -188,6 +235,69 @@ ID3D11DepthStencilState* myDepthStencilStates[static_cast<int>(eDepthState::_DEP
 void SetDepthStencilState(eDepthState aState)
 {
 	pContext->OMSetDepthStencilState(myDepthStencilStates[aState], 1);
+}
+
+//==========================================================================================================================
+
+void loadCustomDepthStencil()
+{
+	////////////////////////////////////////////////////////////////////////
+	// DEPTH FALSE
+	D3D11_DEPTH_STENCIL_DESC depthStencilDescfalse = {};
+	//
+	// Depth state:
+	depthStencilDescfalse.DepthEnable = false;
+	depthStencilDescfalse.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_LESS;
+	//
+	// Stencil state:
+	depthStencilDescfalse.StencilEnable = true;
+	depthStencilDescfalse.StencilReadMask = 0xFF;
+	depthStencilDescfalse.StencilWriteMask = 0xFF;
+	//
+	// Stencil operations if pixel is front-facing:								//default:					
+	depthStencilDescfalse.FrontFace.StencilFailOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	
+	depthStencilDescfalse.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;	//D3D11_STENCIL_OP_INCR;	
+	depthStencilDescfalse.FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	
+	depthStencilDescfalse.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//
+	// Stencil operations if pixel is back-facing:
+	depthStencilDescfalse.BackFace.StencilFailOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	
+	depthStencilDescfalse.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;	//D3D11_STENCIL_OP_DECR;	
+	depthStencilDescfalse.BackFace.StencilPassOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	
+	depthStencilDescfalse.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//
+	pDevice->CreateDepthStencilState(&depthStencilDescfalse, &depthStencilStatefalse);
+	////////////////////////////////////////////////////////////////////////
+
+	////////////////////////////////////////////////////////////////////////
+	// DEPTH TRUE
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
+	//
+	// Depth state:
+	depthStencilDesc.DepthEnable = true;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	//
+	// Stencil state:
+	depthStencilDesc.StencilEnable = true;
+	depthStencilDesc.StencilReadMask = 0xFF;
+	depthStencilDesc.StencilWriteMask = 0xFF;
+	//
+	// Stencil operations if pixel is front-facing:
+	depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//
+	// Stencil operations if pixel is back-facing:
+	depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//
+	pDevice->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
+	////////////////////////////////////////////////////////////////////////
 }
 
 //==========================================================================================================================
@@ -242,6 +352,8 @@ void SaveCfg()
 	fout << "Item7 " << sOptions[6].Function << endl;
 	fout << "Item8 " << sOptions[7].Function << endl;
 	fout << "Item9 " << sOptions[8].Function << endl;
+	fout << "Item10 " << sOptions[9].Function << endl;
+	fout << "Item11 " << sOptions[10].Function << endl;
 	fout.close();
 }
 
@@ -259,6 +371,8 @@ void LoadCfg()
 	fin >> Word >> Item7;
 	fin >> Word >> Item8;
 	fin >> Word >> Item9;
+	fin >> Word >> Item10;
+	fin >> Word >> Item11;
 	fin.close();
 }
 
@@ -393,7 +507,7 @@ bool IsReady()
 void DrawTextF(ID3D11DeviceContext* pContext, LPCWSTR text, int FontSize, int x, int y, DWORD Col)
 {
 	if (Is_Ready == false)
-		MessageBoxA(0, "Error, you dont initialize the menu!", "Error", MB_OK);
+		MessageBoxA(0, "Error, you don't initialize the menu!", "Error", MB_OK);
 
 	if (pFontWrapper)
 		pFontWrapper->DrawString(pContext, text, (float)FontSize, (float)x, (float)y, Col, FW1_RESTORESTATE);
@@ -509,6 +623,107 @@ void Do_Menu()
 	AddMultiOption(L"Aimfov", Item7, &Folder1);
 	AddMultiOption(L"Aimheight", Item8, &Folder1);
 	AddOption(L"Autoshoot", Item9, &Folder1);
+	AddOption(L"Crosshair", Item10, &Folder1);
+	AddMultiOption(L"PreAim", Item11, &Folder1);
+}
+
+//==========================================================================================================================
+
+void getStartslot(UINT mStartSlot)
+{
+	if (countnum == Stride && mStartSlot == 0)
+		matrixStartSlot0 = 0;
+
+	if (countnum == Stride && mStartSlot == 1)
+		matrixStartSlot1 = 1;
+
+	if (countnum == Stride && mStartSlot == 2)
+		matrixStartSlot2 = 2;
+
+	if (countnum == Stride && mStartSlot == 3)
+		matrixStartSlot3 = 3;
+
+	if (countnum == Stride && mStartSlot == 4)
+		matrixStartSlot4 = 4;
+
+	if (countnum == Stride && mStartSlot == 5)
+		matrixStartSlot5 = 5;
+
+	if (countnum == Stride && mStartSlot == 6)
+		matrixStartSlot6 = 6;
+
+	if (countnum == Stride && mStartSlot == 7)
+		matrixStartSlot7 = 7;
+
+	if (countnum == Stride && mStartSlot == 8)
+		matrixStartSlot8 = 8;
+
+	if (countnum == Stride && mStartSlot == 9)
+		matrixStartSlot9 = 9;
+
+	if (countnum == Stride && mStartSlot == 10)
+		matrixStartSlot10 = 10;
+
+	if (countnum == Stride && mStartSlot == 11)
+		matrixStartSlot11 = 11;
+}
+
+void showMatrixStartslot()
+{
+	wchar_t MatrixValue1[256];
+	swprintf_s(MatrixValue1, L"matrixStartSlot1 = %d", matrixStartSlot1);
+	if (matrixStartSlot1 == 1)
+		pFontWrapper->DrawString(pContext, MatrixValue1, 16.0f, 140.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue2[256];
+	swprintf_s(MatrixValue2, L"matrixStartSlot2 = %d", matrixStartSlot2);
+	if (matrixStartSlot2 == 2)
+		pFontWrapper->DrawString(pContext, MatrixValue2, 16.0f, 140.0f, 120.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue3[256];
+	swprintf_s(MatrixValue3, L"matrixStartSlot3 = %d", matrixStartSlot3);
+	if (matrixStartSlot3 == 3)
+		pFontWrapper->DrawString(pContext, MatrixValue3, 16.0f, 140.0f, 140.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue4[256];
+	swprintf_s(MatrixValue4, L"matrixStartSlot4 = %d", matrixStartSlot4);
+	if (matrixStartSlot4 == 4)
+		pFontWrapper->DrawString(pContext, MatrixValue4, 16.0f, 140.0f, 160.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue5[256];
+	swprintf_s(MatrixValue5, L"matrixStartSlot5 = %d", matrixStartSlot5);
+	if (matrixStartSlot5 == 5)
+		pFontWrapper->DrawString(pContext, MatrixValue5, 16.0f, 140.0f, 180.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue6[256];
+	swprintf_s(MatrixValue6, L"matrixStartSlot = %d", matrixStartSlot6);
+	if (matrixStartSlot6 == 6)
+		pFontWrapper->DrawString(pContext, MatrixValue6, 16.0f, 140.0f, 200.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue7[256];
+	swprintf_s(MatrixValue7, L"matrixStartSlot = %d", matrixStartSlot7);
+	if (matrixStartSlot7 == 7)
+		pFontWrapper->DrawString(pContext, MatrixValue7, 16.0f, 140.0f, 220.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue8[256];
+	swprintf_s(MatrixValue8, L"matrixStartSlot = %d", matrixStartSlot8);
+	if (matrixStartSlot8 == 8)
+		pFontWrapper->DrawString(pContext, MatrixValue8, 16.0f, 140.0f, 240.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue9[256];
+	swprintf_s(MatrixValue9, L"matrixStartSlot = %d", matrixStartSlot9);
+	if (matrixStartSlot9 == 9)
+		pFontWrapper->DrawString(pContext, MatrixValue9, 16.0f, 140.0f, 260.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue10[256];
+	swprintf_s(MatrixValue10, L"matrixStartSlot = %d", matrixStartSlot10);
+	if (matrixStartSlot10 == 10)
+		pFontWrapper->DrawString(pContext, MatrixValue10, 16.0f, 140.0f, 280.0f, 0xff00ff00, FW1_RESTORESTATE);
+
+	wchar_t MatrixValue11[256];
+	swprintf_s(MatrixValue11, L"matrixStartSlot = %d", matrixStartSlot11);
+	if (matrixStartSlot11 == 11)
+		pFontWrapper->DrawString(pContext, MatrixValue11, 16.0f, 140.0f, 300.0f, 0xff00ff00, FW1_RESTORESTATE);
 }
 
 //==========================================================================================================================
@@ -540,6 +755,8 @@ void MapBuffer(ID3D11Buffer* pStageBuffer, void** ppData, UINT* pByteWidth)
 	if (FAILED(res))
 	{
 		Log("Map stage buffer failed {%d} {%d} {%d} {%d} {%d}", (void*)pStageBuffer, desc.ByteWidth, desc.BindFlags, desc.CPUAccessFlags, desc.Usage);
+		SAFE_RELEASE(pStageBuffer);
+		return;
 	}
 
 	*ppData = subRes.pData;
@@ -571,6 +788,7 @@ ID3D11Buffer* CopyBufferToCpu(ID3D11Buffer* pBuffer)
 		if (FAILED(pDevice->CreateBuffer(&desc, NULL, &pStageBuffer)))
 		{
 			Log("CreateBuffer failed when CopyBufferToCpu {%d}", CBDesc.ByteWidth);
+			SAFE_RELEASE(pStageBuffer);
 		}
 	}
 
@@ -593,49 +811,45 @@ struct AimEspInfo_t
 };
 std::vector<AimEspInfo_t>AimEspInfo;
 
+
 //w2s
-int WorldViewCBnum = 0;
+int WorldViewCBnum = 2;
 int ProjCBnum = 1;
-int matProjnum = 0;
-//Game				WorldViewCBnum		ProjCBnum		matProjnum		w2s
-//UT4 Alpha			2			1			16			1
-//Fortnite			2			1			16			1
-//Outlast 			0			1			0 and 16		1
-//Warframe			0			0			0 or 4			1
-//GTA 5				0			1			44			1
-//Immortal Redneck		0			1			68			2
-//Dungeons 2			0			1			0			2
-//Bioshock infinite 		0			1			0			1
-//Serious Sam Fusion 2017 	0			1			0			3
+int matProjnum = 16;
+
 ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
 ID3D11Buffer* m_pCurProjCB = NULL;
+bool matrixisnullptr;
+
 void AddModel(ID3D11DeviceContext* pContext)
 {
 	//Warning: this is NOT optimized
 
-	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum
+	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);//WorldViewCBnum 
 
-	if (m_pCurWorldViewCB == NULL && pWorldViewCB != NULL)
+	if (m_pCurWorldViewCB == NULL && pWorldViewCB != nullptr)
 		m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB);
 	SAFE_RELEASE(pWorldViewCB);
 
+
 	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);//ProjCBnum
 
-	if (m_pCurProjCB == NULL && pProjCB != NULL)
+	if (m_pCurProjCB == NULL && pProjCB != nullptr)
 		m_pCurProjCB = CopyBufferToCpu(pProjCB);
 	SAFE_RELEASE(pProjCB);
 
-	if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)//uncomment if a game is crashing
+	if (m_pCurWorldViewCB == NULL || m_pCurProjCB == NULL)
 		return;
+
 
 	float matWorldView[4][4];
 	{
 		float* worldview;
 		MapBuffer(m_pCurWorldViewCB, (void**)&worldview, NULL);
 		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
-		matWorldView[3][2] = matWorldView[3][2] + (aimheight * 20); //aimheight can be done here
+		//matWorldView[3][2] = matWorldView[3][2] + (aimheight * 10); //aimheight alternative in some games
 		UnmapBuffer(m_pCurWorldViewCB);
 		SAFE_RELEASE(m_pCurWorldViewCB);
 	}
@@ -649,18 +863,26 @@ void AddModel(ID3D11DeviceContext* pContext)
 		SAFE_RELEASE(m_pCurProjCB);
 	}
 
-	
 	//======================
-	//w2s 1
-	//vecproject w2s for some games (ut4)
-	DirectX::XMVECTOR pIn { 0 };
-	DirectX::XMFLOAT3 pOut2d;
+	//w2s 1 (ut4)
+	DirectX::XMVECTOR Pos = XMVectorSet(0.0f, (float)preaim*7.0f, (float)aimheight*30.0f, 1.0f);//preaim, aimheight
 
+	DirectX::XMFLOAT4 pOut2d;
 	DirectX::XMMATRIX pWorld = DirectX::XMMatrixIdentity();
 
-	DirectX::XMVECTOR pOut = DirectX::XMVector3Project(pIn, 0, 0, viewport.Width, viewport.Height, 0, 1, (FXMMATRIX)*matProj, (FXMMATRIX)*matWorldView, pWorld);
+	//transpose or not, depends on the game
+	//DirectX::XMMATRIX pWorldView = DirectX::XMMatrixTranspose((FXMMATRIX)*matWorldView); //transpose
+	//DirectX::XMMATRIX pProj = DirectX::XMMatrixTranspose((FXMMATRIX)*matProj); //transpose
+	//DirectX::XMVECTOR pOut = DirectX::XMVector3Project(Pos, 0, 0, viewport.Width, viewport.Height, 0, 1, pProj, pWorldView, pWorld); //transposed
 
-	DirectX::XMStoreFloat3(&pOut2d, pOut);
+	//distance
+	DirectX::XMMATRIX pWorldViewProj = (FXMMATRIX)*matWorldView * (FXMMATRIX)*matProj;
+	float w = Pos.m128_f32[0] * pWorldViewProj.r[0].m128_f32[3] + Pos.m128_f32[1] * pWorldViewProj.r[1].m128_f32[3] + Pos.m128_f32[2] * pWorldViewProj.r[2].m128_f32[3] + pWorldViewProj.r[3].m128_f32[3];
+
+	//normal
+	DirectX::XMVECTOR pOut = DirectX::XMVector3Project(Pos, 0, 0, viewport.Width, viewport.Height, 0, 1, (FXMMATRIX)*matProj, (FXMMATRIX)*matWorldView, pWorld); //normal
+
+	DirectX::XMStoreFloat4(&pOut2d, pOut);
 
 	vec2 o;
 	if (pOut2d.z < 1.0f)
@@ -669,66 +891,170 @@ void AddModel(ID3D11DeviceContext* pContext)
 		o.y = pOut2d.y;
 	}
 	//AimEspInfo_t pAimEspInfo = { static_cast<float>(pOut.m128_f32[0]), static_cast<float>(pOut.m128_f32[1]) };
-	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y) };
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y), static_cast<float>(w*0.1f) };
 	AimEspInfo.push_back(pAimEspInfo);
 	//======================
 	
 	/*
 	//======================
 	//w2s 2
-	//vectransform w2s for some unity games
-	D3DXVECTOR3 Pos;
-	D3DXMATRIX ViewProjectionMatrix;
-	float x; float y;
+	DirectX::XMVECTOR Pos = XMVectorSet(0.0f, 0.0f, (float)aimheight, 1.0f);//aimheight
 
-	D3DXVECTOR4 temp, out;
-	D3DXMatrixMultiply(&ViewProjectionMatrix, (D3DXMATRIX*)&matWorldView, (D3DXMATRIX*)&matProj);
+	DirectX::XMMATRIX ViewProjectionMatrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);
 
-	D3DXVec4Transform(&temp, &D3DXVECTOR4(Pos.x, Pos.y, Pos.z, 1), &ViewProjectionMatrix);
+	//transpose or not, depends on the game
+	///DirectX::XMMATRIX pWorldViewProj = DirectX::XMMatrixTranspose(ViewProjectionMatrix); //transpose
+	//DirectX::XMVECTOR temp = DirectX::XMVector4Transform(Pos, pWorldViewProj); //transposed
 
-	float tempInvW2 = 1.0f / temp.w;
+	//normal
+	DirectX::XMVECTOR temp = DirectX::XMVector4Transform(Pos, ViewProjectionMatrix); //normal
 
-	out.x = (1.0f + (temp.x * tempInvW2))  * viewport.Width / 2.0f;
-	out.y = (1.0f + (temp.y * tempInvW2))  * viewport.Height / 2.0f;//or (1.0f -
-	out.z = temp.z;
+	float tempInvW2 = 1.0f / temp.m128_f32[3];
 
-	x = out.x;
-	y = out.y;
+	float outx = (1.0f + (temp.m128_f32[0] * tempInvW2)) * viewport.Width / 2.0f;
+	float outy = (1.0f + (temp.m128_f32[1] * tempInvW2)) * viewport.Height / 2.0f; //- or + depends on the game
+	float outz = temp.m128_f32[2];
 
-	AimEspInfo_t pAimEspInfo = { static_cast<float>(x), static_cast<float>(y) };
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(outx), static_cast<float>(outy), static_cast<float>(Pos.m128_f32[3]) };
 	AimEspInfo.push_back(pAimEspInfo);
 	//======================
 	*/
 	
 	/*
 	//======================
-	//w2s 3
-	D3DXMATRIX matrix, m1;
-	D3DXVECTOR4 position;
-	D3DXVECTOR4 input;
+	//w2s 3 (unity)
+	//DirectX::XMVECTOR Pos = XMVectorSet(-(float)aimheight/20.0f, -(float)aimheight/20.0f, 0.0f, 1.0f);
+	DirectX::XMVECTOR Pos = XMVectorSet(0.0f, (float)aimheight/10.0f, 0.1f, 1.0f);//verdun(game) aimheight with pre aim 0.1
+	DirectX::XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);
 
-	//input.y = (float)aimheight;
-	D3DXMatrixMultiply(&matrix, (D3DXMATRIX*)&matWorldView, (D3DXMATRIX*)&matProj);
+	//transpose or not, depends on the game
+	//DirectX::XMMATRIX WorldViewProj = DirectX::XMMatrixTranspose(viewProjMatrix); //transpose
 
-	D3DXMatrixTranspose(&matrix, &matrix);
-	D3DXVec4Transform(&position, &input, &matrix);
-	//or
-	//D3DXMatrixTranspose(&m1, &matrix);
-	//D3DXVec4Transform(&position, &input, &m1);
+	//normal
+	DirectX::XMMATRIX WorldViewProj = viewProjMatrix; //normal
+	
+	float mx = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[0] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[0] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[0] + WorldViewProj.r[3].m128_f32[0];
+	float my = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[1] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[1] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[1] + WorldViewProj.r[3].m128_f32[1];
+	float mz = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[2] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[2] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[2] + WorldViewProj.r[3].m128_f32[2];
+	float mw = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[3] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[3] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[3] + WorldViewProj.r[3].m128_f32[3];
 
-	position.x = input.x * matrix._11 + input.y * matrix._21 + input.z * matrix._31 + matrix._41;
-	position.y = input.x * matrix._12 + input.y * matrix._22 + input.z * matrix._32 + matrix._42;
-	position.z = input.x * matrix._13 + input.y * matrix._23 + input.z * matrix._33 + matrix._43;
-	position.w = input.x * matrix._14 + input.y * matrix._24 + input.z * matrix._34 + matrix._44;
+	float xx, yy;
+	if (mw > 0.2f)
+	{
+		xx = ((mx / mw) * (viewport.Width / 2.0f)) + (viewport.Width / 2.0f);
+		yy = (viewport.Height / 2.0f) + ((my / mw) * (viewport.Height / 2.0f)); //- or + depends on the game
+	}
+	else
+	{
+		xx = -1;
+		yy = -1;
+	}
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(mw) };
+	AimEspInfo.push_back(pAimEspInfo);
+	//======================
+	*/
 
-	float xx = ((position.x / position.w) * (viewport.Width / 2)) + (viewport.Width / 2);
-	float yy = (viewport.Height / 2) - ((position.y / position.w) * (viewport.Height / 2));
+	/*
+	//======================
+	//w2s 4 (untested)
+	vec3 vStart;
+	vec3 vOut;
+	float *flMatrix;
+	DirectX::XMMATRIX Matrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);
 
-	AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy) };
+	//transpose or not, depends on the game
+	//DirectX::XMMATRIX Matrixx = DirectX::XMMatrixTranspose(Matrix); //transpose
+
+	flMatrix = (float*)&Matrix;
+
+	vOut.x = flMatrix[0] * vStart.x + flMatrix[1] * vStart.y + flMatrix[2] * vStart.z + flMatrix[3];
+	vOut.y = flMatrix[4] * vStart.x + flMatrix[5] * vStart.y + flMatrix[6] * vStart.z + flMatrix[7];
+
+	float flTemp = flMatrix[12] * vStart.x + flMatrix[13] * vStart.y + flMatrix[14] * vStart.z + flMatrix[15];//w
+
+	if (flTemp > 0.01f)
+	{
+		float x = (float)viewport.Width / 2.0f;
+		float y = (float)viewport.Height / 2.0f;
+
+		x += 0.5f * vOut.x * (float)viewport.Width + 0.5f;
+		y -= 0.5f * vOut.y * (float)viewport.Height + 0.5f; //- or + depends on the game
+
+		vOut.x = x;
+		vOut.y = y;
+	}
+	else
+	{
+		vOut.x = -1.0f;
+		vOut.y = -1.0f;
+	}
+
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(vOut.x), static_cast<float>(vOut.y) };
+	AimEspInfo.push_back(pAimEspInfo);
+	//======================
+	*/
+	
+	/*
+	//======================
+	//w2s 5 (untested)
+	DirectX::XMVECTOR Pos = XMVectorSet(0.0f, 0.0f, (float)countnum, 1.0f);//aimheight
+	float xx, yy;
+	DirectX::XMFLOAT3 Pos;
+	DirectX::XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);//DirectX::XMMatrixTranspose((FXMMATRIX)*matWorldView);
+	//DirectX::XMMATRIX ProjectionMatrix = DirectX::XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (viewport.Width / viewport.Height), 0.1f, 10000.0f); // Creating Perspective Matrix
+	//XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply(pWorldView, ProjectionMatrix); // View Projective Matrix = View Matrix * Projection Matrix
+
+	float w = viewProjMatrix.r[3].m128_f32[0] * Pos.m128_f32[0] +
+		viewProjMatrix.r[3].m128_f32[1] * Pos.m128_f32[1] +
+		viewProjMatrix.r[3].m128_f32[2] * Pos.m128_f32[2] +
+		viewProjMatrix.r[3].m128_f32[3];
+
+	if (w > 0.01f) {     // check the angles
+		float inversew = 1 / w;
+
+	float tempX = viewProjMatrix.r[0].m128_f32[0] * Pos.m128_f32[0] +
+		viewProjMatrix.r[0].m128_f32[1] * Pos.m128_f32[1] +
+		viewProjMatrix.r[0].m128_f32[2] * Pos.m128_f32[2] +
+		viewProjMatrix.r[0].m128_f32[3];
+
+	float tempY = viewProjMatrix.r[1].m128_f32[0] * Pos.m128_f32[0] +
+		viewProjMatrix.r[1].m128_f32[1] * Pos.m128_f32[1] +
+		viewProjMatrix.r[1].m128_f32[2] * Pos.m128_f32[2] +
+		viewProjMatrix.r[1].m128_f32[3];
+
+		xx = (viewport.Width / 2.0f) + (0.5f * (tempX * inversew) * viewport.Width + 0.5f);
+		yy = (viewport.Height / 2.0f) - (0.5f * (tempY * inversew) * viewport.Height + 0.5f);
+		}
+		else
+		{
+			xx = -1.0f;
+			yy = -1.0f;
+		}
+
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy) };
+		AimEspInfo.push_back(pAimEspInfo);
+	*/
+
+	/*
+	//======================
+	//w2s6 (untested)
+	DirectX::XMVECTOR position{ 0 };
+	float x, y;
+
+	DirectX::XMMATRIX view = (FXMMATRIX)*matWorldView;
+	DirectX::XMMATRIX projection = (FXMMATRIX)*matProj;
+	DirectX::XMMATRIX viewProjection;
+	viewProjection = view * projection;
+
+	DirectX::XMVECTOR screenPosition = XMVector3Transform(position, viewProjection);
+	//D3DXVec3TransformCoord(&screenPosition, &position, &viewProjection);
+	x = (screenPosition.m128_f32[0] + 1) * viewport.Width / 2;
+	y = (-screenPosition.m128_f32[1] + 1) * viewport.Height / 2;
+
+	AimEspInfo_t pAimEspInfo = { static_cast<float>(x), static_cast<float>(y) };
 	AimEspInfo.push_back(pAimEspInfo);
 	//======================
 	*/
 }
 
 //==========================================================================================================================
-
