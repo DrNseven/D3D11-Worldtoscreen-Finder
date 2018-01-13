@@ -18,7 +18,7 @@ int Item7 = 3; //sOptions[6].Function //aimfov
 int Item8 = 0; //sOptions[7].Function //aimheight
 int Item9 = 0; //sOptions[8].Function //autoshoot
 int Item10 = 1; //sOptions[9].Function //crosshair
-int Item11 = 2; //sOptions[10].Function //preaim
+int Item11 = 0; //sOptions[10].Function //preaim
 
 //globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
@@ -671,22 +671,22 @@ void getStartslot(UINT mStartSlot)
 void showMatrixStartslot()
 {
 	wchar_t MatrixValue1[256];
-	swprintf_s(MatrixValue1, L"matrixStartSlot1 = %d", matrixStartSlot1);
+	swprintf_s(MatrixValue1, L"matrixCBnum = %d", matrixStartSlot1);
 	if (matrixStartSlot1 == 1)
 		pFontWrapper->DrawString(pContext, MatrixValue1, 16.0f, 140.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue2[256];
-	swprintf_s(MatrixValue2, L"matrixStartSlot2 = %d", matrixStartSlot2);
+	swprintf_s(MatrixValue2, L"matrixCBnum = %d", matrixStartSlot2);
 	if (matrixStartSlot2 == 2)
 		pFontWrapper->DrawString(pContext, MatrixValue2, 16.0f, 140.0f, 120.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue3[256];
-	swprintf_s(MatrixValue3, L"matrixStartSlot3 = %d", matrixStartSlot3);
+	swprintf_s(MatrixValue3, L"matrixCBnum = %d", matrixStartSlot3);
 	if (matrixStartSlot3 == 3)
 		pFontWrapper->DrawString(pContext, MatrixValue3, 16.0f, 140.0f, 140.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue4[256];
-	swprintf_s(MatrixValue4, L"matrixStartSlot4 = %d", matrixStartSlot4);
+	swprintf_s(MatrixValue4, L"matrixCBnum = %d", matrixStartSlot4);
 	if (matrixStartSlot4 == 4)
 		pFontWrapper->DrawString(pContext, MatrixValue4, 16.0f, 140.0f, 160.0f, 0xff00ff00, FW1_RESTORESTATE);
 
@@ -696,17 +696,17 @@ void showMatrixStartslot()
 		pFontWrapper->DrawString(pContext, MatrixValue5, 16.0f, 140.0f, 180.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue6[256];
-	swprintf_s(MatrixValue6, L"matrixStartSlot = %d", matrixStartSlot6);
+	swprintf_s(MatrixValue6, L"matrixCBnum = %d", matrixStartSlot6);
 	if (matrixStartSlot6 == 6)
 		pFontWrapper->DrawString(pContext, MatrixValue6, 16.0f, 140.0f, 200.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue7[256];
-	swprintf_s(MatrixValue7, L"matrixStartSlot = %d", matrixStartSlot7);
+	swprintf_s(MatrixValue7, L"matrixCBnum = %d", matrixStartSlot7);
 	if (matrixStartSlot7 == 7)
 		pFontWrapper->DrawString(pContext, MatrixValue7, 16.0f, 140.0f, 220.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue8[256];
-	swprintf_s(MatrixValue8, L"matrixStartSlot = %d", matrixStartSlot8);
+	swprintf_s(MatrixValue8, L"matrixCBnum = %d", matrixStartSlot8);
 	if (matrixStartSlot8 == 8)
 		pFontWrapper->DrawString(pContext, MatrixValue8, 16.0f, 140.0f, 240.0f, 0xff00ff00, FW1_RESTORESTATE);
 
@@ -716,12 +716,12 @@ void showMatrixStartslot()
 		pFontWrapper->DrawString(pContext, MatrixValue9, 16.0f, 140.0f, 260.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue10[256];
-	swprintf_s(MatrixValue10, L"matrixStartSlot = %d", matrixStartSlot10);
+	swprintf_s(MatrixValue10, L"matrixCBnum = %d", matrixStartSlot10);
 	if (matrixStartSlot10 == 10)
 		pFontWrapper->DrawString(pContext, MatrixValue10, 16.0f, 140.0f, 280.0f, 0xff00ff00, FW1_RESTORESTATE);
 
 	wchar_t MatrixValue11[256];
-	swprintf_s(MatrixValue11, L"matrixStartSlot = %d", matrixStartSlot11);
+	swprintf_s(MatrixValue11, L"matrixCBnum = %d", matrixStartSlot11);
 	if (matrixStartSlot11 == 11)
 		pFontWrapper->DrawString(pContext, MatrixValue11, 16.0f, 140.0f, 300.0f, 0xff00ff00, FW1_RESTORESTATE);
 }
@@ -821,7 +821,6 @@ ID3D11Buffer* pWorldViewCB = nullptr;
 ID3D11Buffer* pProjCB = nullptr;
 ID3D11Buffer* m_pCurWorldViewCB = NULL;
 ID3D11Buffer* m_pCurProjCB = NULL;
-bool matrixisnullptr;
 
 void AddModel(ID3D11DeviceContext* pContext)
 {
