@@ -196,7 +196,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
 
 	if(performance_loss && pFontWrapper)
-		pFontWrapper->DrawString(pContext, L"Performace loss, need better model rec", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
+		pFontWrapper->DrawString(pContext, L"Performance loss, need better model rec", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
 
 	static DWORD lastTime = timeGetTime();
 	DWORD timePassed = timeGetTime() - lastTime;
