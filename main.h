@@ -592,7 +592,6 @@ void CopyBufferToCpu(ID3D11Buffer* pInBuffer, ID3D11Buffer*& pOutBuffer)
 			//return;
 	}
 
-	//performance_loss = false;
 	if (pOutBuffer == nullptr)
 	{ // create shadow buffer.
 	  //Log("called once");
