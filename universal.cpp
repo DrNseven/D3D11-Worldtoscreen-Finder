@@ -1,4 +1,4 @@
-﻿//d3d11 w2s finder by n7
+﻿//ut4 multihack by n7 (w2s finder)
 
 #include <Windows.h>
 #include <vector>
@@ -192,16 +192,18 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
 
 	//draw
-	if (pFontWrapper)
-	pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
+	//if (pFontWrapper)
+	//pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
 
-	//show target amount 
-	if(logger)
+	if(performance_loss && pFontWrapper)
+		pFontWrapper->DrawString(pContext, L"Performace loss, need better model rec", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
+
+	static DWORD lastTime = timeGetTime();
+	DWORD timePassed = timeGetTime() - lastTime;
+	if (timePassed>2000)
 	{
-		wchar_t reportTarget[256];
-		swprintf_s(reportTarget, L"AimEspInfo.size() = %d", (int)AimEspInfo.size());
-		if (pFontWrapper)
-		pFontWrapper->DrawString(pContext, reportTarget, 14.0f, 320.0f, 80.0f, 0xffff1612, FW1_RESTORESTATE);
+		performance_loss = false;
+		lastTime = timeGetTime();
 	}
 
 	//shaders
@@ -210,15 +212,15 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 	if (!psGreen)
 		GenerateShader(pDevice, &psGreen, 0.0f, 1.0f, 0.0f);
-	
 
+	
 	//menu background
 	renderer->begin();
 	if (Visible)
-		renderer->drawOutlinedRect(Vec4(100, 100, 230, 196), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.5f }); //182 = 10 entries, 196 = 11
+		renderer->drawOutlinedRect(Vec4(100, 100, 230, 196), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 1.f, 1.f, 0.5f }); //182 = 10 entries, 196 = 11
 	renderer->draw();
 	renderer->end();
-	
+
 	//menu
 	if (IsReady() == false)
 	{
@@ -233,10 +235,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	Draw_Menu();
 	Navigation();
 
-	//================
 	renderer->begin();
-	//||
-
 	//dot crosshair
 	if(sOptions[9].Function == 1)
 	renderer->drawOutlinedRect(Vec4(viewport.Width/2, viewport.Height/2, 3, 2), 1.f, Color{ 1.0f, 1.0f, 1.0f, 1.0f }, Color{ 1.f , 1.f, 1.f, 1.2f });
@@ -264,10 +263,8 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			}
 		}
 	}
-	//||
 	renderer->draw();
 	renderer->end();
-	//==============
 
 	//RMouse|LMouse|Shift|Ctrl|Alt|Space|X|C
 	if (sOptions[4].Function == 0) Daimkey = VK_RBUTTON;
@@ -302,7 +299,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			//if (aimbot == AimEspInfo[i].iTeam)
 
 			//if in fov
-			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
+			if (AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
 
 				//get closest/nearest target to crosshair
 				if (AimEspInfo[i].CrosshairDst < fClosestPos)
@@ -355,8 +352,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	//logger
 	if (logger && pFontWrapper) //&& countnum >= 0)
 	{
-		showMatrixStartslot();
-
 		wchar_t reportValue[256];
 		swprintf_s(reportValue, L"(Keys:-O P+ I=Log) countnum = %d", countnum);
 		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
@@ -381,7 +376,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 //==========================================================================================================================
 
-//only hook/use this if the IAGet and PSGet functions are crashing a game
 void __stdcall hookD3D11IASetVertexBuffers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppVertexBuffers, const UINT *pStrides, const UINT *pOffsets)
 {
 	//Stride = *pStrides;
@@ -395,65 +389,72 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 {
 	//if (GetAsyncKeyState(VK_F9) & 1)
 		//Log("DrawIndexed called");
-	
+
 	if (firstTime2)
 	{
 		firstTime2 = false;
 
-		loadCustomDepthStencil();
-
 		//create depthstencilstate
-		D3D11_DEPTH_STENCIL_DESC  stencilDesc;
-		stencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-		stencilDesc.StencilEnable = true;
-		stencilDesc.StencilReadMask = 0xFF;
-		stencilDesc.StencilWriteMask = 0xFF;
-		stencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		stencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		stencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		stencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-		stencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		stencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		stencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		stencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		hr = pDevice->CreateDepthStencilState(&Desc, &pHackedDepthStencilState);
+		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState pHackedDepthStencilState"); }
 
-		stencilDesc.DepthEnable = true;
-		stencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		hr = pDevice->CreateDepthStencilState(&stencilDesc, &myDepthStencilStates[static_cast<int>(eDepthState::ENABLED)]);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState eDepthState::ENABLED"); }
+		////////////////////////////////////////////////////////////////////////
+		// DEPTH TRUE
+		D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
+		//
+		// Depth state:
+		depthStencilDesc.DepthEnable = true;
+		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		//
+		// Stencil state:
+		depthStencilDesc.StencilEnable = true;
+		depthStencilDesc.StencilReadMask = 0xFF;
+		depthStencilDesc.StencilWriteMask = 0xFF;
+		//
+		// Stencil operations if pixel is front-facing:
+		depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+		depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		//
+		// Stencil operations if pixel is back-facing:
+		depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		//
+		pDevice->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
+		////////////////////////////////////////////////////////////////////////
 
-		stencilDesc.DepthEnable = false;
-		stencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		hr = pDevice->CreateDepthStencilState(&stencilDesc, &myDepthStencilStates[static_cast<int>(eDepthState::DISABLED)]);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState eDepthState::DISABLED"); }
-
-		stencilDesc.DepthEnable = false;
-		stencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-		stencilDesc.StencilEnable = false;
-		stencilDesc.StencilReadMask = UINT8(0xFF);
-		stencilDesc.StencilWriteMask = 0x0;
-		hr = pDevice->CreateDepthStencilState(&stencilDesc, &myDepthStencilStates[static_cast<int>(eDepthState::NO_READ_NO_WRITE)]);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState eDepthState::NO_READ_NO_WRITE"); }
-
-		stencilDesc.DepthEnable = true;
-		stencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL; //
-		stencilDesc.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
-		stencilDesc.StencilEnable = false;
-		stencilDesc.StencilReadMask = UINT8(0xFF);
-		stencilDesc.StencilWriteMask = 0x0;
-
-		stencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_ZERO;
-		stencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_ZERO;
-		stencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		stencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
-
-		stencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_ZERO;
-		stencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_ZERO;
-		stencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_ZERO;
-		stencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_NEVER;
-		hr = pDevice->CreateDepthStencilState(&stencilDesc, &myDepthStencilStates[static_cast<int>(eDepthState::READ_NO_WRITE)]);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState eDepthState::READ_NO_WRITE"); }
-
+		////////////////////////////////////////////////////////////////////////
+		// DEPTH FALSE
+		D3D11_DEPTH_STENCIL_DESC depthStencilDescfalse = {};
+		//
+		// Depth state:
+		depthStencilDescfalse.DepthEnable = false;
+		depthStencilDescfalse.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_LESS;
+		//
+		// Stencil state:
+		depthStencilDescfalse.StencilEnable = true;
+		depthStencilDescfalse.StencilReadMask = 0xFF;
+		depthStencilDescfalse.StencilWriteMask = 0xFF;
+		//
+		// Stencil operations if pixel is front-facing:								//default:					test:
+		depthStencilDescfalse.FrontFace.StencilFailOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	<-
+		depthStencilDescfalse.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;	//D3D11_STENCIL_OP_INCR;	<-
+		depthStencilDescfalse.FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;		//D3D11_STENCIL_OP_KEEP;	<-
+		depthStencilDescfalse.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		//
+		// Stencil operations if pixel is back-facing:
+		depthStencilDescfalse.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;		//D3D11_STENCIL_OP_KEEP;	<-
+		depthStencilDescfalse.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;	//D3D11_STENCIL_OP_DECR;	<-
+		depthStencilDescfalse.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;		//D3D11_STENCIL_OP_KEEP;	<-
+		depthStencilDescfalse.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		//
+		pDevice->CreateDepthStencilState(&depthStencilDescfalse, &depthStencilStatefalse);
+		////////////////////////////////////////////////////////////////////////
 
 		//wireframe
 		D3D11_RASTERIZER_DESC rwDesc;
@@ -501,121 +502,128 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	if (pscBuffer != NULL) { pscBuffer->Release(); pscBuffer = NULL; }
 
 	//get vsdesc.ByteWidth
-	pContext->VSGetConstantBuffers(vsStartSlot, 1, &vsBuffer);
-	if (vsBuffer!=NULL)
-		vsBuffer->GetDesc(&vsdesc);
-	if (vsBuffer != NULL) { vsBuffer->Release(); vsBuffer = NULL; }
+	//pContext->VSGetConstantBuffers(vsStartSlot, 1, &vsBuffer);
+	//if (vsBuffer!=NULL)
+		//vsBuffer->GetDesc(&vsdesc);
+	//if (vsBuffer != NULL) { vsBuffer->Release(); vsBuffer = NULL; }
 
 	
-	//esp/aimbot 
-	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
-	if (countnum == Stride)
-	{
-		AddModel(pContext);//w2s
-	}
-
 	//wallhack/chams
 	if (sOptions[0].Function == 1 || sOptions[1].Function == 1) //if wallhack/chams option is enabled in menu
 	if (countnum == Stride)
-	{
-		SetDepthStencilState(DISABLED);
-		if (sOptions[1].Function == 1)
-			pContext->PSSetShader(psRed, NULL, NULL);
-		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
-		if (sOptions[1].Function == 1)
-			pContext->PSSetShader(psGreen, NULL, NULL);
-		SetDepthStencilState(READ_NO_WRITE);
-	}
-
-	/*
-	//wallhack/chams alternative for other games where shader turns transparent
-	if (sOptions[0].Function == 1 || sOptions[1].Function == 1) //if wallhack/chams option is enabled in menu
-	if (Stride == 32)//models
-	{
-		if (sOptions[0].Function == 1)
 		{
 			pContext->OMGetDepthStencilState(&pDepthStencilState, &stencilRef);
 			if (pDepthStencilState != NULL)
 			{
-				D3D11_DEPTH_STENCIL_DESC Desc;
 				pDepthStencilState->GetDesc(&Desc);
-				if (Desc.DepthEnable == TRUE && Desc.DepthFunc == D3D11_COMPARISON_GREATER_EQUAL && Desc.StencilEnable == TRUE) 
+				if (Desc.DepthEnable == TRUE)// && Desc.DepthFunc == D3D11_COMPARISON_GREATER_EQUAL)
 				{
-					//Log("called?");
+					//disable depth
+					pContext->OMSetDepthStencilState(depthStencilStatefalse, 1);
 
-					if (sOptions[0].Function == 1)
-					SetDepthStencilState(DISABLED);
-
-					//red texture chams
+					//pssetshader chams
 					if (sOptions[1].Function == 1)
-					{
-						for (int x1 = 0; x1 <= 10; x1++)
-						{
-							pContext->PSSetShaderResources(x1, 1, &texSRVr);
-						}
-						pContext->PSSetSamplers(0, 1, &pSamplerState);
-					}
+					pContext->PSSetShader(psRed, NULL, NULL);
+
+					//red texture chams (for games where shader turns transparent)
+					//if (sOptions[1].Function == 1)
+					//{
+						//for (int x1 = 0; x1 <= 10; x1++)
+						//{
+							//pContext->PSSetShaderResources(x1, 1, &texSRVr);
+						//}
+						//pContext->PSSetSamplers(0, 1, &pSamplerState);
+					//}
+					
+					//SAFE_RELEASE(depthStencilStatefalse);//bad: breaks chams, good: wallhack goes through
 				}
 			}
+
+			phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
+
+			//if (pDepthStencilState != NULL && Desc.DepthEnable == FALSE)
+			//{
+			// restore depth stencil state.
+			pContext->OMSetDepthStencilState(pDepthStencilState, stencilRef);
+
+			if (sOptions[1].Function == 1)
+			pContext->PSSetShader(psGreen, NULL, NULL);
+			
+			//green texture chams (only use in games where shader turns transparent)
+			//if (sOptions[1].Function == 1)
+			//{
+				//for (int y1 = 0; y1 <= 10; y1++)
+				//{
+					//pContext->PSSetShaderResources(y1, 1, &texSRVg);
+				//}
+				//pContext->PSSetSamplers(0, 1, &pSamplerState);
+			//}
+			
+			//}
+			SAFE_RELEASE(pDepthStencilState);
 		}
+		
 
-		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
+	//esp/aimbot 
+	if ((sOptions[2].Function==1) || (sOptions[3].Function==1)) //if esp/aimbot option is enabled in menu
+		if (countnum == Stride)
+		/*
+		if ( //unreal
+			(Stride == 32 && IndexCount == 10155 && indesc.ByteWidth == 24264) ||
+			(Stride == 44 && IndexCount == 11097 && indesc.ByteWidth == 24420) ||
+			(Stride == 40 && IndexCount == 11412 && indesc.ByteWidth == 24366) ||
+			(Stride == 40 && IndexCount == 11487 && indesc.ByteWidth == 24762) ||
+			(Stride == 44 && IndexCount == 83262 && indesc.ByteWidth == 197496) ||
+			(Stride == 40 && IndexCount == 23283 && indesc.ByteWidth == 49518)
+			)
+		*/
+	{
+		//if (GetAsyncKeyState(VK_F9) & 1) //log pscdesc.ByteWidth
+		//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && pscdesc.ByteWidth == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, pscdesc.ByteWidth);
 
-		if (sOptions[0].Function == 1)
+		pContext->OMGetDepthStencilState(&pDepthStencilState, &stencilRef);
+		if (pDepthStencilState != NULL)
 		{
-			if (pDepthStencilState != NULL)
-			{
-				//restore depth stencil state
-				if (sOptions[0].Function == 1)
-				pContext->OMSetDepthStencilState(pDepthStencilState, stencilRef);
+			D3D11_DEPTH_STENCIL_DESC Desc;
+			pDepthStencilState->GetDesc(&Desc);
 
-				//green texture chams
-				if (sOptions[1].Function == 1)
-				{
-					for (int y1 = 0; y1 <= 10; y1++)
-					{
-						pContext->PSSetShaderResources(y1, 1, &texSRVg);
-					}
-					pContext->PSSetSamplers(0, 1, &pSamplerState);
-				}
-			}
+			//if (GetAsyncKeyState(VK_F10) & 1) //log Desc.StencilWriteMask
+			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Desc.StencilWriteMask == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Desc.StencilWriteMask);
+
+		//	if (Desc.StencilWriteMask == 0xFF)//for better performance, WARNING: this can be 0x0 
+		//	{
+				AddModel(pContext);//w2s
+				//pContext->Flush();
+		//	}
 		}
-		//SAFE_RELEASE(pDepthStencilState);
+		SAFE_RELEASE(pDepthStencilState);
 	}
-	*/
+
+	
+	//removal
+	//if (sOptions[xx].Function == 1)
+	//if (Stride == xx)
+		//return;
 
 
 	//small bruteforce logger
 	//ALT + CTRL + L toggles logger
 	if (logger)
 	{
-		if ((Stride == 44 ||Stride == 40) && (GetAsyncKeyState(VK_F10) & 1))//press f10 to log models of Stride 40 & 44 on screen
-			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && vsdesc.ByteWidth == %d && texdesc.Format == %d && texdesc.Height == %d && texdesc.Width == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, vsdesc.ByteWidth, texdesc.Format, texdesc.Height, texdesc.Width);
+		//if ((Stride == 44 ||Stride == 40) && (GetAsyncKeyState(VK_F10) & 1))//press f10 to log most models on screen
+			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && vsdesc.ByteWidth == %d && texdesc.Format == %d && texdesc.Height == %d && texdesc.Width == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, vsdesc.ByteWidth, texdesc.Format, texdesc.Height, texdesc.Width);
 
-		//Stride may not be the best option in all games, you can use IndexCount, pscdesc.ByteWidth, etc.
-		if (countnum == Stride)//IndexCount / 100)
+		if (countnum == Stride)//IndexCount/100)
 			if (GetAsyncKeyState('I') & 1)
 				Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && Descr.Format == %d && pscdesc.ByteWidth == %d && Descr.Buffer.NumElements == %d && vsStartSlot == %d && psStartSlot == %d && vsdesc.ByteWidth == %d && texdesc.Format == %d && texdesc.Height == %d && texdesc.Width == %d", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, Descr.Format, pscdesc.ByteWidth, Descr.Buffer.NumElements, vsStartSlot, psStartSlot, vsdesc.ByteWidth, texdesc.Format, texdesc.Height, texdesc.Width);
 
 		if (countnum == Stride)//IndexCount / 100)
 		{
-			//return; //delete texture
-			pContext->OMSetDepthStencilState(depthStencilStatefalse, 1);
-
-			if (sOptions[1].Function == 1)
-			for (int x1 = 0; x1 <= 1; x1++) { pContext->PSSetShaderResources(x1, 1, &texSRVr); }
-			pContext->PSSetSamplers(0, 1, &pSamplerState);
-
-			phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
-
-			if (sOptions[1].Function == 1)
-			for (int y1 = 0; y1 <= 1; y1++) { pContext->PSSetShaderResources(y1, 1, &texSRVg); }
-			pContext->PSSetSamplers(0, 1, &pSamplerState);
-
-			pContext->OMSetDepthStencilState(depthStencilState, 1);
+			//delete texture
+			return;
 		}
 	}
-	
+
     return phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
 }
 
@@ -636,12 +644,10 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 			pShaderResView->GetDesc(&Descr);
 
 			//unstable in some games
-			ID3D11Resource *Resource;
-			pShaderResView->GetResource(&Resource);
-
-			ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
-			Texture->GetDesc(&texdesc);
-
+			//ID3D11Resource *Resource;
+			//pShaderResView->GetResource(&Resource);
+			//ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
+			//Texture->GetDesc(&texdesc);
 			
 			//if (texdesc.Usage == D3D11_USAGE::D3D11_USAGE_DYNAMIC) // COLORBUFFER
 			//{
@@ -652,8 +658,8 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 				
 			//}
 			
-			SAFE_RELEASE(Resource);
-			SAFE_RELEASE(Texture);
+			//SAFE_RELEASE(Resource);
+			//SAFE_RELEASE(Texture);
 		}
 	}
 	*/
@@ -703,16 +709,16 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 	}
 
 	/*
-	//alternative wallhack example for f'up games, only use this if no draw function works
+	//alternative wallhack example for f'up games, only use this if no draw function works for wallhack
 	if (pssrStartSlot == 1) //if black screen, find correct pssrStartSlot
-		SetDepthStencilState(READ_NO_WRITE);
-	if (pscdesc.ByteWidth == 272 && Descr.Format == 56) //models example
+		pContext->OMSetDepthStencilState(depthStencilStatefalse, 1);
+	if (pscdesc.ByteWidth == 224 && Descr.Format == 71) //models in Tom Clancys Rainbow Six Siege old version
 	{
 		SetDepthStencilState(DISABLED);
 		//pContext->PSSetShader(psRed, NULL, NULL);
 	}
 	else if (pssrStartSlot == 1) //if black screen, find correct pssrStartSlot
-		SetDepthStencilState(READ_NO_WRITE);
+		pContext->OMSetDepthStencilState(depthStencilState, 1);
 	*/
 
 	return phookD3D11PSSetShaderResources(pContext, StartSlot, NumViews, ppShaderResourceViews);
@@ -723,8 +729,8 @@ void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT
 void __stdcall hookD3D11CreateQuery(ID3D11Device* pDevice, const D3D11_QUERY_DESC *pQueryDesc, ID3D11Query **ppQuery)
 {
 	/*
-	//this is required in some games for better wallhack
-	//disables Occlusion which prevents rendering player models through certain objects (used by wallhack to see models through walls at all distances, REDUCES FPS)
+	//this is required in some games for better wallhack (REDUCES FPS, not recommended)
+	//disables Occlusion which prevents rendering player models through certain objects (used by wallhack to see models through walls at all distances)
 	if (pQueryDesc->Query == D3D11_QUERY_OCCLUSION)
 	{
 		D3D11_QUERY_DESC oqueryDesc = CD3D11_QUERY_DESC();
@@ -791,12 +797,7 @@ void __stdcall hookD3D11DrawIndexedInstancedIndirect(ID3D11DeviceContext* pConte
 
 void __stdcall hookD3D11VSSetConstantBuffers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppConstantBuffers)
 {
-	vsStartSlot = StartSlot;
-
-	if(logger)
-	{
-		getStartslot(StartSlot);
-	}
+		vsStartSlot = StartSlot;
 
 	return phookD3D11VSSetConstantBuffers(pContext, StartSlot, NumBuffers, ppConstantBuffers);
 }
@@ -882,6 +883,7 @@ DWORD __stdcall InitializeHook(LPVOID)
 		return NULL;
 	}
 
+
     pSwapChainVtable = (DWORD_PTR*)pSwapChain;
     pSwapChainVtable = (DWORD_PTR*)pSwapChainVtable[0];
 
@@ -923,13 +925,6 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[10], hookD3D11PSSetSamplers, reinterpret_cast<void**>(&phookD3D11PSSetSamplers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
-
-	//if (MH_CreateHook((DWORD_PTR*)pContextVTable[41], hookD3D11Dispatch, reinterpret_cast<void**>(&phookD3D11Dispatch)) != MH_OK) { return 1; }
-	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[41]) != MH_OK) { return 1; }
-	//if (MH_CreateHook((DWORD_PTR*)pContextVTable[42], hookD3D11DispatchIndirect, reinterpret_cast<void**>(&phookD3D11DispatchIndirect)) != MH_OK) { return 1; }
-	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[42]) != MH_OK) { return 1; }
-	//if (MH_CreateHook((DWORD_PTR*)pContextVTable[38], hookD3D11DrawAuto, reinterpret_cast<void**>(&phookD3D11DrawAuto)) != MH_OK) { return 1; }
-	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[38]) != MH_OK) { return 1; }
 	
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
