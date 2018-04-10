@@ -26,5 +26,5 @@ The ingame menu key is INSERT, use arrows to navigate.
 
 
 
-Credits: Wu ZhiQiang, dracorx, evolution536, Yazzn
+Credits: Wu ZhiQiang, dracorx, evolution536, Yazzn, loadeddeath
 
