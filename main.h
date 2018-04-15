@@ -96,7 +96,7 @@ static BOOL performance_loss = FALSE;
 
 //used for logging/cycling through values
 bool logger = false;
-UINT countnum = -1;
+UINT countnum = 0;
 char szString[64];
 
 #define SAFE_RELEASE(x) if (x) { x->Release(); x = NULL; }
@@ -196,15 +196,15 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 
 //==========================================================================================================================
 
+//wh
 UINT stencilRef = 0;
-ID3D11DepthStencilState* pDepthStencilState = NULL;
 D3D11_DEPTH_STENCIL_DESC Desc;
-ID3D11DepthStencilState* pHackedDepthStencilState = NULL;
+ID3D11DepthStencilState* origDepthStencilState = NULL;
+ID3D11DepthStencilState* pDepthStencilState = NULL; 
 
 ID3D11DepthStencilState* depthStencilState;
 ID3D11DepthStencilState* depthStencilStatefalse;
 
-//wh
 char *state;
 ID3D11RasterizerState * rwState;
 ID3D11RasterizerState * rsState;
@@ -594,7 +594,7 @@ void CopyBufferToCpu(ID3D11Buffer* pInBuffer, ID3D11Buffer*& pOutBuffer)
 
 	if (pOutBuffer == nullptr)
 	{ // create shadow buffer.
-	  //Log("called once");
+	  Log("called once");
 		performance_loss = true;
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = 0;
@@ -667,7 +667,6 @@ void AddModel(ID3D11DeviceContext* pContext)
 		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
 		//matWorldView[3][2] = matWorldView[3][2] + (aimheight * 10); //aimheight alternative in some games
 		UnmapBuffer(m_pCurWorldViewCB);
-		//SAFE_RELEASE(m_pCurWorldViewCB);
 	}
 
 	float matProj[4][4];
@@ -676,7 +675,6 @@ void AddModel(ID3D11DeviceContext* pContext)
 		MapBuffer(m_pCurProjCB, (void**)&proj, NULL);
 		memcpy(matProj, &proj[matProjnum], sizeof(matProj));//matProjnum changed to 16
 		UnmapBuffer(m_pCurProjCB);
-		//SAFE_RELEASE(m_pCurProjCB);
 	}
 	//SAFE_RELEASE(pWorldViewCB);
 	//SAFE_RELEASE(pProjCB);
@@ -705,6 +703,7 @@ void AddModel(ID3D11DeviceContext* pContext)
 	vec2 o;
 	if (pOut2d.z < 1.0f)
 	{
+		//if (screenPoint.x < -1.0f || screenPoint.x > 1.0f || screenPoint.y < -1.0f || screenPoint.y > 1.0f || screenPoint.z < 0.0f || screenPoint.z > 1.0f)
 		o.x = pOut2d.x;
 		o.y = pOut2d.y;
 	}
@@ -875,61 +874,3 @@ void AddModel(ID3D11DeviceContext* pContext)
 	*/
 }
 
-//==========================================================================================================================
-/*
-//if (pWorldViewCB != nullptr && pProjCB != nullptr)
-//W2S(pWorldViewCB, pProjCB);
-void W2S(ID3D11Buffer* pWorldViewCB, ID3D11Buffer* pProjCB)
-{
-	float matWorldView[4][4];
-	{
-		float* worldview;
-		MapBuffer(m_pCurWorldViewCB, (void**)&worldview, NULL);
-		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
-		//matWorldView[3][2] = matWorldView[3][2] + (aimheight * 10); //aimheight alternative in some games
-		UnmapBuffer(m_pCurWorldViewCB);
-		//SAFE_RELEASE(m_pCurWorldViewCB);
-	}
-
-	float matProj[4][4];
-	{
-		float *proj;
-		MapBuffer(m_pCurProjCB, (void**)&proj, NULL);
-		memcpy(matProj, &proj[16], sizeof(matProj));//matProjnum changed to 16
-		UnmapBuffer(m_pCurProjCB);
-		//SAFE_RELEASE(m_pCurProjCB);
-	}
-
-	//======================
-	//w2s 1 (ut4)
-	DirectX::XMVECTOR Pos = XMVectorSet(0.0f, (float)preaim*7.0f, (float)aimheight*30.0f, 1.0f);//preaim, aimheight
-
-	DirectX::XMFLOAT4 pOut2d;
-	DirectX::XMMATRIX pWorld = DirectX::XMMatrixIdentity();
-
-	//transpose or not, depends on the game
-	//DirectX::XMMATRIX pWorldView = DirectX::XMMatrixTranspose((FXMMATRIX)*matWorldView); //transpose
-	//DirectX::XMMATRIX pProj = DirectX::XMMatrixTranspose((FXMMATRIX)*matProj); //transpose
-	//DirectX::XMVECTOR pOut = DirectX::XMVector3Project(Pos, 0, 0, viewport.Width, viewport.Height, 0, 1, pProj, pWorldView, pWorld); //transposed
-
-	//distance
-	DirectX::XMMATRIX pWorldViewProj = (FXMMATRIX)*matWorldView * (FXMMATRIX)*matProj;
-	float w = Pos.m128_f32[0] * pWorldViewProj.r[0].m128_f32[3] + Pos.m128_f32[1] * pWorldViewProj.r[1].m128_f32[3] + Pos.m128_f32[2] * pWorldViewProj.r[2].m128_f32[3] + pWorldViewProj.r[3].m128_f32[3];
-
-	//normal
-	DirectX::XMVECTOR pOut = DirectX::XMVector3Project(Pos, 0, 0, viewport.Width, viewport.Height, 0, 1, (FXMMATRIX)*matProj, (FXMMATRIX)*matWorldView, pWorld); //normal
-
-	DirectX::XMStoreFloat4(&pOut2d, pOut);
-
-	vec2 o;
-	if (pOut2d.z < 1.0f)
-	{
-		o.x = pOut2d.x;
-		o.y = pOut2d.y;
-	}
-	//AimEspInfo_t pAimEspInfo = { static_cast<float>(pOut.m128_f32[0]), static_cast<float>(pOut.m128_f32[1]) };
-	AimEspInfo_t pAimEspInfo = { static_cast<float>(o.x), static_cast<float>(o.y), static_cast<float>(w*0.1f) };
-	AimEspInfo.push_back(pAimEspInfo);
-	//======================
-}
-*/
