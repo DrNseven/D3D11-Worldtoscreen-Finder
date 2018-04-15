@@ -539,7 +539,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
 
 		if (sOptions[0].Function == 1)
-		pContext->OMSetDepthStencilState(depthStencilState, stencilRef); //depth on
+		//pContext->OMSetDepthStencilState(depthStencilState, stencilRef); //depth on //UT4
+		pContext->OMSetDepthStencilState(origDepthStencilState, stencilRef); //depth on 
 
 		//pssetshader chams
 		if (sOptions[1].Function == 1)
