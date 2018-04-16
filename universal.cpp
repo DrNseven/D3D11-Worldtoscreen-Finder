@@ -398,9 +398,9 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		// Depth state:
 		depthStencilDescfalse.DepthEnable = false;
 		depthStencilDescfalse.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		//
 		/*
-		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_GREATER; 
+		//UT4 only 
+		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_GREATER; //greater
 		//
 		// Stencil state:
 		depthStencilDescfalse.StencilEnable = true;
@@ -421,6 +421,38 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		//
 		*/
 		pDevice->CreateDepthStencilState(&depthStencilDescfalse, &depthStencilStatefalse);
+		////////////////////////////////////////////////////////////////////////
+
+		////////////////////////////////////////////////////////////////////////
+		// DEPTH TRUE
+		D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
+		//
+		// Depth state:
+		depthStencilDesc.DepthEnable = true;
+		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		depthStencilDesc.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
+		/*
+		//UT4 only
+		//
+		// Stencil state:
+		depthStencilDesc.StencilEnable = true;
+		depthStencilDesc.StencilReadMask = 0xFF;
+		depthStencilDesc.StencilWriteMask = 0xFF;
+		//
+		// Stencil operations if pixel is front-facing:
+		depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+		depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //greater_equal
+		//
+		// Stencil operations if pixel is back-facing:
+		depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //greater_equal
+		//
+		*/
+		pDevice->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
 		////////////////////////////////////////////////////////////////////////
 
 		//wireframe
@@ -516,21 +548,8 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		if (sOptions[0].Function == 1)
 		pContext->OMSetDepthStencilState(origDepthStencilState, stencilRef); //depth on
 
-		/*
-		if (origDepthStencilState != NULL)
-		{
-			D3D11_DEPTH_STENCIL_DESC Desc;
-			origDepthStencilState->GetDesc(&Desc);
-
-			//if (GetAsyncKeyState(VK_F10) & 1) //log Desc stuff
-			//Log("Desc.BackFace == %d && Desc.DepthEnable == %d && Desc.DepthFunc == %d && Desc.DepthWriteMask == %d && Desc.FrontFace == %d && Desc.StencilEnable == %d && Desc.StencilReadMask == %d && Desc.StencilWriteMask == %d && stencilRef == %d", 
-			//Desc.BackFace, Desc.DepthEnable, Desc.DepthFunc, Desc.DepthWriteMask, Desc.FrontFace, Desc.StencilEnable, Desc.StencilReadMask, Desc.StencilWriteMask, stencilRef);
-
-			//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 7 && Desc.DepthWriteMask == 0 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 1 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 240
-			//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 4 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0
-			//Desc.BackFace == 1192490352 && Desc.DepthEnable == 0 && Desc.DepthFunc == 2 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192490336 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0	
-		}
-		*/
+		if (sOptions[1].Function == 1)
+		pContext->OMSetDepthStencilState(depthStencilState, stencilRef); //depth on
 
 		//pssetshader chams
 		if (sOptions[1].Function == 1)
@@ -546,6 +565,24 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			pContext->PSSetSamplers(0, 1, &pSamplerState);
 		}
 		*/
+
+		/*
+		//debug
+		if (origDepthStencilState != NULL)
+		{
+		D3D11_DEPTH_STENCIL_DESC Desc;
+		origDepthStencilState->GetDesc(&Desc);
+
+		//if (GetAsyncKeyState(VK_F10) & 1) //log Desc stuff
+		//Log("Desc.BackFace == %d && Desc.DepthEnable == %d && Desc.DepthFunc == %d && Desc.DepthWriteMask == %d && Desc.FrontFace == %d && Desc.StencilEnable == %d && Desc.StencilReadMask == %d && Desc.StencilWriteMask == %d && stencilRef == %d",
+		//Desc.BackFace, Desc.DepthEnable, Desc.DepthFunc, Desc.DepthWriteMask, Desc.FrontFace, Desc.StencilEnable, Desc.StencilReadMask, Desc.StencilWriteMask, stencilRef);
+
+		//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 7 && Desc.DepthWriteMask == 0 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 1 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 240
+		//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 4 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0
+		//Desc.BackFace == 1192490352 && Desc.DepthEnable == 0 && Desc.DepthFunc == 2 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192490336 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0
+		}
+		*/
+
 		if (sOptions[0].Function == 1)
 		SAFE_RELEASE(origDepthStencilState);
 	}
@@ -570,6 +607,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			D3D11_DEPTH_STENCIL_DESC Desc;
 			pDepthStencilState->GetDesc(&Desc);
 
+			//debug
 			//if (GetAsyncKeyState(VK_F10) & 1) //log stencilRef & Desc.StencilWriteMask
 			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && pscdesc.ByteWidth == %d && stencilRef == %d && Desc.StencilWriteMask == %x", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, pscdesc.ByteWidth, stencilRef, Desc.StencilWriteMask);
 
