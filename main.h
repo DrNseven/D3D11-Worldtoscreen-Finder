@@ -18,7 +18,7 @@ int Item7 = 3; //sOptions[6].Function //aimfov
 int Item8 = 0; //sOptions[7].Function //aimheight
 int Item9 = 0; //sOptions[8].Function //autoshoot
 int Item10 = 0; //sOptions[9].Function //crosshair
-int Item11 = 2; //sOptions[10].Function //preaim
+int Item11 = 0; //sOptions[10].Function //preaim
 
 //globals
 DWORD Daimkey = VK_RBUTTON;		//aimkey
@@ -161,7 +161,7 @@ HRESULT GenerateShader(ID3D11Device* pD3DDevice, ID3D11PixelShader** pShader, fl
 	char szCast[] = "struct VS_OUT"
 		"{"
 		" float4 Position : SV_Position;"
-		" float4 Color : COLOR1;"
+		" float4 Color : COLOR0;"
 		"};"
 
 		"float4 main( VS_OUT input ) : SV_Target"

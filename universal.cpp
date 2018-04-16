@@ -392,42 +392,15 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 		//create depthstencilstate
 		////////////////////////////////////////////////////////////////////////
-		// DEPTH TRUE
-		D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
-		//
-		// Depth state:
-		depthStencilDesc.DepthEnable = true;
-		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depthStencilDesc.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL; //greater_equal
-		//
-		// Stencil state:
-		depthStencilDesc.StencilEnable = true;
-		depthStencilDesc.StencilReadMask = 0xFF;
-		depthStencilDesc.StencilWriteMask = 0xFF;
-		//
-		// Stencil operations if pixel is front-facing:
-		depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //greater_equal
-		//
-		// Stencil operations if pixel is back-facing:
-		depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //greater_equal
-		//
-		pDevice->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
-		////////////////////////////////////////////////////////////////////////
-
-		////////////////////////////////////////////////////////////////////////
 		// DEPTH FALSE
 		D3D11_DEPTH_STENCIL_DESC depthStencilDescfalse = {};
 		//
 		// Depth state:
 		depthStencilDescfalse.DepthEnable = false;
 		depthStencilDescfalse.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_GREATER; //greater
+		//
+		/*
+		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_GREATER; 
 		//
 		// Stencil state:
 		depthStencilDescfalse.StencilEnable = true;
@@ -435,17 +408,18 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		depthStencilDescfalse.StencilWriteMask = 0xFF;
 		//
 		// Stencil operations if pixel is front-facing:												
-		depthStencilDescfalse.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;	
-		depthStencilDescfalse.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;	
-		depthStencilDescfalse.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;	
+		depthStencilDescfalse.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDescfalse.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+		depthStencilDescfalse.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
 		depthStencilDescfalse.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 		//
 		// Stencil operations if pixel is back-facing:
-		depthStencilDescfalse.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;	
-		depthStencilDescfalse.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;	
-		depthStencilDescfalse.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;	
+		depthStencilDescfalse.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		depthStencilDescfalse.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+		depthStencilDescfalse.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
 		depthStencilDescfalse.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 		//
+		*/
 		pDevice->CreateDepthStencilState(&depthStencilDescfalse, &depthStencilStatefalse);
 		////////////////////////////////////////////////////////////////////////
 
@@ -525,37 +499,54 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 		//pssetshader chams
 		if (sOptions[1].Function == 1)
 			pContext->PSSetShader(psRed, NULL, NULL);
-
+		/*
 		//red texture chams (only use in games where shader turns transparent)
-		//if (sOptions[1].Function == 1)
-		//{
-			//for (int x1 = 0; x1 <= 10; x1++)
-			//{
-				//pContext->PSSetShaderResources(x1, 1, &texSRVr);
-			//}
-			//pContext->PSSetSamplers(0, 1, &pSamplerState);
-		//}
-
+		if (sOptions[1].Function == 1)
+		{
+			for (int x1 = 0; x1 <= 10; x1++)
+			{
+				pContext->PSSetShaderResources(x1, 1, &texSRVr);
+			}
+			pContext->PSSetSamplers(0, 1, &pSamplerState);
+		}
+		*/
 		phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
 
+		//chams will not work with this
 		if (sOptions[0].Function == 1)
-		//pContext->OMSetDepthStencilState(depthStencilState, stencilRef); //depth on //UT4
-		pContext->OMSetDepthStencilState(origDepthStencilState, stencilRef); //depth on 
+		pContext->OMSetDepthStencilState(origDepthStencilState, stencilRef); //depth on
+
+		/*
+		if (origDepthStencilState != NULL)
+		{
+			D3D11_DEPTH_STENCIL_DESC Desc;
+			origDepthStencilState->GetDesc(&Desc);
+
+			//if (GetAsyncKeyState(VK_F10) & 1) //log Desc stuff
+			//Log("Desc.BackFace == %d && Desc.DepthEnable == %d && Desc.DepthFunc == %d && Desc.DepthWriteMask == %d && Desc.FrontFace == %d && Desc.StencilEnable == %d && Desc.StencilReadMask == %d && Desc.StencilWriteMask == %d && stencilRef == %d", 
+			//Desc.BackFace, Desc.DepthEnable, Desc.DepthFunc, Desc.DepthWriteMask, Desc.FrontFace, Desc.StencilEnable, Desc.StencilReadMask, Desc.StencilWriteMask, stencilRef);
+
+			//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 7 && Desc.DepthWriteMask == 0 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 1 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 240
+			//Desc.BackFace == 1192489904 && Desc.DepthEnable == 1 && Desc.DepthFunc == 4 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192489888 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0
+			//Desc.BackFace == 1192490352 && Desc.DepthEnable == 0 && Desc.DepthFunc == 2 && Desc.DepthWriteMask == 1 && Desc.FrontFace == 1192490336 && Desc.StencilEnable == 0 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255 && stencilRef == 0	
+		}
+		*/
 
 		//pssetshader chams
 		if (sOptions[1].Function == 1)
 			pContext->PSSetShader(psGreen, NULL, NULL);
-
+		/*
 		//green texture chams (only use in games where shader turns transparent)
-		//if (sOptions[1].Function == 1)
-			//{
-			//for (int y1 = 0; y1 <= 10; y1++)
-			//{
-				//pContext->PSSetShaderResources(y1, 1, &texSRVg);
-			//}
-			//pContext->PSSetSamplers(0, 1, &pSamplerState);
-		//}
-
+		if (sOptions[1].Function == 1)
+			{
+			for (int y1 = 0; y1 <= 10; y1++)
+			{
+				pContext->PSSetShaderResources(y1, 1, &texSRVg);
+			}
+			pContext->PSSetSamplers(0, 1, &pSamplerState);
+		}
+		*/
+		if (sOptions[0].Function == 1)
 		SAFE_RELEASE(origDepthStencilState);
 	}
 
@@ -582,7 +573,7 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 			//if (GetAsyncKeyState(VK_F10) & 1) //log stencilRef & Desc.StencilWriteMask
 			//Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && pscdesc.ByteWidth == %d && stencilRef == %d && Desc.StencilWriteMask == %x", Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, pscdesc.ByteWidth, stencilRef, Desc.StencilWriteMask);
 
-			if (stencilRef == 0 && Desc.StencilWriteMask == 0xFF)//better performance/more fps in UT4 engine games, Warning: this can be different or useless in other games
+			if (stencilRef == 0) //&& Desc.StencilWriteMask == 0xFF)//stencilRef 0 for better performance/more fps in UT4 engine games, Warning: this can be different or useless in other games
 			{
 				AddModel(pContext);//w2s
 				//pContext->Flush();
