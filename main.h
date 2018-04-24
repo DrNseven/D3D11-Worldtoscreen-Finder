@@ -594,7 +594,7 @@ void CopyBufferToCpu(ID3D11Buffer* pInBuffer, ID3D11Buffer*& pOutBuffer)
 
 	if (pOutBuffer == nullptr)
 	{ // create shadow buffer.
-	  Log("called once");
+	  //Log("called once");
 		performance_loss = true;
 		D3D11_BUFFER_DESC desc;
 		desc.BindFlags = 0;
