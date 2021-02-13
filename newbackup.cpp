@@ -35,9 +35,9 @@ bool aimbot = 1;
 int aimkey = 1;
 int aimsens = 1;
 bool modelrecfinder = 1;
-int countStride = 0;
-int countIndexCount = 0;
-int countveWidth = 0;
+int countStride = -1;
+int countIndexCount = -1;
+int countveWidth = -1;
 bool wtsfinder = 1;
 
 
