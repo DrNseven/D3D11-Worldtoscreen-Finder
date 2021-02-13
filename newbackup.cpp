@@ -582,9 +582,9 @@ HRESULT __stdcall hkPresent_D3D11(IDXGISwapChain* pSwapChain, UINT SyncInterval,
 		if (modelrecfinder == 1)
 		{
 			//bruteforce
-			ImGui::SliderInt("find Stride", &countStride, 0, 100);
-			ImGui::SliderInt("find IndexCount", &countIndexCount, 0, 100);
-			ImGui::SliderInt("find veWidth", &countveWidth, 0, 100);
+			ImGui::SliderInt("find Stride", &countStride, -1, 100);
+			ImGui::SliderInt("find IndexCount", &countIndexCount, -1, 100);
+			ImGui::SliderInt("find veWidth", &countveWidth, -1, 100);
 		}
 
 		ImGui::Checkbox("Wtsfinder", &wtsfinder);
@@ -657,7 +657,7 @@ void __stdcall hkDrawIndexed_D3D11(ID3D11DeviceContext* pContextD3D11, UINT Inde
 
 	//wallhack/chams
 	if (wallhack==1||chams==1) //if wallhack or chams option is enabled in menu
-		if (countStride == Stride || countIndexCount / 100 || countveWidth / 1000) //model rec (replace later with the logged values) <-------------------------------------------
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000) //model rec (replace later with the logged values) <-------------------------------------------
 		//if(Stride == 24 && IndexCount == 9192 && veWidth == 47280||Stride == 24 && IndexCount == 16998 && veWidth == 82560)//model in menu
 		//if(Stride == 24 && IndexCount > 300 && veDesc.ByteWidth > 30000)//models
 		//if(Stride == 40)
@@ -699,7 +699,7 @@ void __stdcall hkDrawIndexed_D3D11(ID3D11DeviceContext* pContextD3D11, UINT Inde
 
 	//esp/aimbot
 	if (esp==1||aimbot==1) //if esp/aimbot option is enabled in menu
-		if (countStride == Stride || countIndexCount / 100 || countveWidth / 1000) //model rec (replace later with the logged values) <-------------------------------------------
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000) //model rec (replace later with the logged values) <-------------------------------------------
 		//if(Stride == 24 && IndexCount == 9192 && veWidth == 47280||Stride == 24 && IndexCount == 16998 && veWidth == 82560)//model in menu
 		//if(Stride == 24 && IndexCount > 300 && veDesc.ByteWidth > 30000)//models
 		//if(Stride == 40)
