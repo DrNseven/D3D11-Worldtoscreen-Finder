@@ -1,50 +1,49 @@
 ﻿//D3D11 base (w2s finder)
-//compile in release mode, not debug
+//compile in release mode
 
+#pragma once
 #include <Windows.h>
 #include <vector>
 #include <d3d11.h>
+#include <dxgi.h>
 #include <D3Dcompiler.h> //generateshader
 #pragma comment(lib, "D3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "winmm.lib") //timeGetTime
 #include "MinHook/include/MinHook.h" //detour x86&x64
-#include "FW1FontWrapper/FW1FontWrapper.h" //font
+
+//imgui
+#include "ImGui\imgui.h"
+#include "imgui\imgui_impl_win32.h"
+#include "ImGui\imgui_impl_dx11.h"
+
+//DX Includes
+#include <DirectXMath.h>
+using namespace DirectX;
+
 #pragma warning( disable : 4244 )
 
 
 typedef HRESULT(__stdcall *D3D11PresentHook) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 typedef HRESULT(__stdcall *D3D11ResizeBuffersHook) (IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
-typedef void(__stdcall *D3D11IASetVertexBuffersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppVertexBuffers, const UINT *pStrides, const UINT *pOffsets);
-typedef void(__stdcall *D3D11PSSetShaderResourcesHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews);
 
 typedef void(__stdcall *D3D11DrawIndexedHook) (ID3D11DeviceContext* pContext, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation);
 typedef void(__stdcall *D3D11DrawIndexedInstancedHook) (ID3D11DeviceContext* pContext, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation);
 typedef void(__stdcall *D3D11DrawHook) (ID3D11DeviceContext* pContext, UINT VertexCount, UINT StartVertexLocation);
-typedef void(__stdcall *D3D11DrawInstancedHook) (ID3D11DeviceContext* pContext, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation);
-typedef void(__stdcall *D3D11DrawInstancedIndirectHook) (ID3D11DeviceContext* pContext, ID3D11Buffer *pBufferForArgs, UINT AlignedByteOffsetForArgs);
-typedef void(__stdcall *D3D11DrawIndexedInstancedIndirectHook) (ID3D11DeviceContext* pContext, ID3D11Buffer *pBufferForArgs, UINT AlignedByteOffsetForArgs);
 
+typedef void(__stdcall* D3D11PSSetShaderResourcesHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews);
 typedef void(__stdcall *D3D11VSSetConstantBuffersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppConstantBuffers);
-typedef void(__stdcall *D3D11PSSetSamplersHook) (ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumSamplers, ID3D11SamplerState *const *ppSamplers);
-typedef void(__stdcall *D3D11CreateQueryHook) (ID3D11Device* pDevice, const D3D11_QUERY_DESC *pQueryDesc, ID3D11Query **ppQuery);
 
 
 D3D11PresentHook phookD3D11Present = NULL;
 D3D11ResizeBuffersHook phookD3D11ResizeBuffers = NULL;
-D3D11IASetVertexBuffersHook phookD3D11IASetVertexBuffers = NULL;
-D3D11PSSetShaderResourcesHook phookD3D11PSSetShaderResources = NULL;
 
 D3D11DrawIndexedHook phookD3D11DrawIndexed = NULL;
 D3D11DrawIndexedInstancedHook phookD3D11DrawIndexedInstanced = NULL;
 D3D11DrawHook phookD3D11Draw = NULL;
-D3D11DrawInstancedHook phookD3D11DrawInstanced = NULL;
-D3D11DrawInstancedIndirectHook phookD3D11DrawInstancedIndirect = NULL;
-D3D11DrawIndexedInstancedIndirectHook phookD3D11DrawIndexedInstancedIndirect = NULL;
 
+D3D11PSSetShaderResourcesHook phookD3D11PSSetShaderResources = NULL;
 D3D11VSSetConstantBuffersHook phookD3D11VSSetConstantBuffers = NULL;
-D3D11PSSetSamplersHook phookD3D11PSSetSamplers = NULL;
-D3D11CreateQueryHook phookD3D11CreateQuery = NULL;
 
 
 ID3D11Device *pDevice = NULL;
@@ -54,18 +53,45 @@ DWORD_PTR* pSwapChainVtable = NULL;
 DWORD_PTR* pContextVTable = NULL;
 DWORD_PTR* pDeviceVTable = NULL;
 
-IFW1Factory *pFW1Factory = NULL;
-IFW1FontWrapper *pFontWrapper = NULL;
 
 #include "main.h" //helper funcs
-#include "renderer.h" //renderer funcs
-std::unique_ptr<Renderer> renderer;
+
+//==========================================================================================================================
+
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+HWND window = NULL;
+WNDPROC oWndProc;
+
+void InitImGuiD3D11()
+{
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+	ImGui::StyleColorsClassic();
+
+	ImGui_ImplWin32_Init(window);
+	ImGui_ImplDX11_Init(pDevice, pContext);
+}
+
+LRESULT __stdcall WndProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) {
+		return true;
+	}
+	return CallWindowProc(oWndProc, hWnd, uMsg, wParam, lParam);
+}
 
 //==========================================================================================================================
 
 HRESULT __stdcall hookD3D11ResizeBuffers(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 {
-	if (RenderTargetView != NULL) { RenderTargetView->Release(); RenderTargetView = NULL; }
+	ImGui_ImplDX11_InvalidateDeviceObjects();
+	if (nullptr != mainRenderTargetViewD3D11) { mainRenderTargetViewD3D11->Release(); mainRenderTargetViewD3D11 = nullptr; }
+
+	HRESULT toReturn = phookD3D11ResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+	ImGui_ImplDX11_CreateDeviceObjects();
 
 	return phookD3D11ResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
@@ -74,590 +100,396 @@ HRESULT __stdcall hookD3D11ResizeBuffers(IDXGISwapChain *pSwapChain, UINT Buffer
 
 HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
-	if (firstTime)
+	if (!initonce)
 	{
-		firstTime = false;
-
-		//PlaySoundA(GetDirectoryFile("sound.wav"), 0, SND_FILENAME | SND_ASYNC | SND_NOSTOP | SND_NODEFAULT);
-
-		//get device
-		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D11Device), (void **)&pDevice)))
+		if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&pDevice)))
 		{
-			pSwapChain->GetDevice(__uuidof(pDevice), (void**)&pDevice);
 			pDevice->GetImmediateContext(&pContext);
+			DXGI_SWAP_CHAIN_DESC sd;
+			pSwapChain->GetDesc(&sd);
+			window = sd.OutputWindow;
+			ID3D11Texture2D* pBackBuffer;
+			pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+			pDevice->CreateRenderTargetView(pBackBuffer, NULL, &mainRenderTargetViewD3D11);
+			pBackBuffer->Release();
+			oWndProc = (WNDPROC)SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)WndProc);
+			InitImGuiD3D11();
+
+			// Create depthstencil state
+			D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+			depthStencilDesc.DepthEnable = TRUE;
+			depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+			depthStencilDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+			depthStencilDesc.StencilEnable = FALSE;
+			depthStencilDesc.StencilReadMask = 0xFF;
+			depthStencilDesc.StencilWriteMask = 0xFF;
+			// Stencil operations if pixel is front-facing
+			depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+			depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+			depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+			depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+			// Stencil operations if pixel is back-facing
+			depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+			depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+			depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+			depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+			pDevice->CreateDepthStencilState(&depthStencilDesc, &DepthStencilState_FALSE);
+
+			GenerateTexture(0xff00ff00, DXGI_FORMAT_R10G10B10A2_UNORM); //DXGI_FORMAT_R32G32B32A32_FLOAT); //DXGI_FORMAT_R8G8B8A8_UNORM; 
+
+			initonce = true;
 		}
-
-		//create font
-		hr = FW1CreateFactory(FW1_VERSION, &pFW1Factory);
-		if (FAILED(hr)) { Log("Failed to FW1CreateFactory"); return hr; }
-		hr = pFW1Factory->CreateFontWrapper(pDevice, L"Tahoma", &pFontWrapper);
-		if (FAILED(hr)) { Log("Failed to CreateFontWrapper"); return hr; }
-		pFW1Factory->Release();
-
-		//create sample state
-		D3D11_SAMPLER_DESC sampDesc;
-		ZeroMemory(&sampDesc, sizeof(sampDesc));
-		sampDesc.Filter = D3D11_FILTER::D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-		sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-		sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-		sampDesc.ComparisonFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_LESS_EQUAL;
-		sampDesc.MinLOD = 0;
-		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-		hr = pDevice->CreateSamplerState(&sampDesc, &pSamplerState);
-		if (FAILED(hr)) { Log("Failed to CreateSamplerState"); }
-		
-		//create green texture
-		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; //format
-		static const uint32_t s_pixel = 0xff00ff00; //0xffffffff white, 0xff00ff00 green, 0xffff0000 blue, 0xff0000ff red
-		D3D11_SUBRESOURCE_DATA initData = { &s_pixel, sizeof(uint32_t), 0 };
-		D3D11_TEXTURE2D_DESC desc;
-		memset(&desc, 0, sizeof(desc));
-		desc.Width = desc.Height = desc.MipLevels = desc.ArraySize = 1;
-		desc.Format = format;
-		desc.SampleDesc.Count = 1;
-		desc.Usage = D3D11_USAGE_DEFAULT;// D3D11_USAGE_IMMUTABLE;
-		desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;// D3D11_BIND_SHADER_RESOURCE;
-		hr = pDevice->CreateTexture2D(&desc, &initData, &texGreen);
-		if (FAILED(hr)) { Log("Failed to CreateTexture2D"); }
-
-		//create red texture
-		static const uint32_t s_pixelr = 0xff0000ff; //0xffffffff white, 0xff00ff00 green, 0xffff0000 blue, 0xff0000ff red
-		D3D11_SUBRESOURCE_DATA initDatar = { &s_pixelr, sizeof(uint32_t), 0 };
-		D3D11_TEXTURE2D_DESC descr;
-		memset(&descr, 0, sizeof(descr));
-		descr.Width = descr.Height = descr.MipLevels = descr.ArraySize = 1;
-		descr.Format = format;
-		descr.SampleDesc.Count = 1;
-		descr.Usage = D3D11_USAGE_DEFAULT;// D3D11_USAGE_IMMUTABLE;
-		descr.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;// D3D11_BIND_SHADER_RESOURCE;
-		hr = pDevice->CreateTexture2D(&descr, &initDatar, &texRed);
-		if (FAILED(hr)) { Log("Failed to CreateTexture2D"); }
-
-		//create green shaderresourceview
-		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
-		memset(&SRVDesc, 0, sizeof(SRVDesc));
-		SRVDesc.Format = format;
-		SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		SRVDesc.Texture2D.MipLevels = 1;
-		hr = pDevice->CreateShaderResourceView(texGreen, &SRVDesc, &texSRVg);
-		if (FAILED(hr)) { Log("Failed to CreateShaderResourceView"); }
-		texGreen->Release();
-
-		//create red shaderresourceview
-		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDescr;
-		memset(&SRVDescr, 0, sizeof(SRVDescr));
-		SRVDescr.Format = format;
-		SRVDescr.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		SRVDescr.Texture2D.MipLevels = 1;
-		hr = pDevice->CreateShaderResourceView(texRed, &SRVDescr, &texSRVr);
-		if (FAILED(hr)) { Log("Failed to CreateShaderResourceView"); }
-		texRed->Release();
-
-		//renderer
-		renderer = std::make_unique<Renderer>(pDevice);
-
-		//load cfg settings
-		LoadCfg();
-	}
-
-	//create rendertarget
-	if (RenderTargetView == NULL)
-	{
-		//Log("called"); //only once
-
-		//viewport
-		pContext->RSGetViewports(&vps, &viewport);
-		ScreenCenterX = viewport.Width / 2.0f;
-		ScreenCenterY = viewport.Height / 2.0f;
-
-		//get backbuffer
-		ID3D11Texture2D* backbuffer = NULL;
-		hr = pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backbuffer);
-		if (FAILED(hr)) {
-			Log("Failed to get BackBuffer");
-			pContext->OMGetRenderTargets(1, &RenderTargetView, NULL);
-			pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
-			return hr;
-		}
-		
-		//create rendertarget
-		hr = pDevice->CreateRenderTargetView(backbuffer, NULL, &RenderTargetView);
-		backbuffer->Release();
-		if (FAILED(hr)) {
-			Log("Failed to get RenderTarget");
-			return hr;
-		}
-	}
-	else //call before you draw
-		pContext->OMSetRenderTargets(1, &RenderTargetView, NULL);
-
-
-	//DEBUG: show target amount 
-	//swprintf_s(reportValue, L"AimEspInfo.size() = %d", (int)AimEspInfo.size());
-	//if (pFontWrapper)
-		//pFontWrapper->DrawString(pContext, reportValue, 14.0f, 16.0f, 30.0f, 0xffff1612, FW1_RESTORESTATE);
-
-	//draw text example
-	//if (pFontWrapper)
-	//pFontWrapper->DrawString(pContext, L"D3D11 Hook", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
-
-	//warn if staging buffer or bad model rec drains fps
-	if(performance_loss && pFontWrapper)
-		pFontWrapper->DrawString(pContext, L"FPS loss, need better model rec", 14, 16.0f, 16.0f, 0xffff1612, FW1_RESTORESTATE | FW1_ALIASED);
-	if (performance_loss)
-	{
-		static DWORD lastTime = timeGetTime();
-		DWORD timePassed = timeGetTime() - lastTime;
-		if (timePassed>2000)
-		{
-			performance_loss = false;
-			lastTime = timeGetTime();
-		}
+		else
+			return phookD3D11Present(pSwapChain, SyncInterval, Flags);
 	}
 
 	//create shaders
-	if (!psRed)
-		GenerateShader(pDevice, &psRed, 1.0f, 0.0f, 0.0f);
+	if (!sGreen)
+		GenerateShader(pDevice, &sGreen, 0.0f, 1.0f, 0.0f); //green
 
-	if (!psGreen)
-		GenerateShader(pDevice, &psGreen, 0.0f, 1.0f, 0.0f);
+	if (!sMagenta)
+		GenerateShader(pDevice, &sMagenta, 1.0f, 0.0f, 1.0f); //magenta
 
-	
-	//menu background
-	renderer->begin();
-	if (Visible)
-		renderer->drawOutlinedRect(Vec4(100, 100, 230, 196), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 1.f, 1.f, 0.5f }); //182 = 10 entries, 196 = 11
-	renderer->draw();
-	renderer->end();
-
-	//menu
-	if (IsReady() == false)
+	//recreate rendertarget on reset
+	if (mainRenderTargetViewD3D11 == NULL)
 	{
-		Init_Menu(pContext, L"D3D11 Menu", 100, 100);
-		Do_Menu();
-		Color_Font = 0xFFFFFFFF;//white
-		Color_Off = 0xFFFF0000;//red
-		Color_On = 0xFF00FF00;//green
-		Color_Folder = 0xFF2F4F4F;//grey
-		Color_Current = 0xFF00BFFF;//orange
+		ID3D11Texture2D* pBackBuffer = NULL;
+		pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+		pDevice->CreateRenderTargetView(pBackBuffer, NULL, &mainRenderTargetViewD3D11);
+		pBackBuffer->Release();
 	}
-	Draw_Menu();
-	Navigation();
 
-	renderer->begin();
-	if(sOptions[9].Function == 1) //if dot crosshair is enabled in menu
-	renderer->drawOutlinedRect(Vec4(viewport.Width/2, viewport.Height/2, 3, 2), 1.f, Color{ 1.0f, 1.0f, 1.0f, 1.0f }, Color{ 1.f , 1.f, 1.f, 1.2f }); //draw dot
+	//get imgui displaysize
+	ImGuiIO io = ImGui::GetIO();
+	ViewportWidth = io.DisplaySize.x;
+	ViewportHeight = io.DisplaySize.y;
+	ScreenCenterX = ViewportWidth / 2.0f;
+	ScreenCenterY = ViewportHeight / 2.0f;
 
-	if (sOptions[2].Function == 1) //if esp is enabled in menu
-	if (AimEspInfo.size() != NULL)
-	{
-		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
+	if (GetAsyncKeyState(VK_INSERT) & 1) {
+		showmenu = !showmenu;
+	}
+
+
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	if (showmenu) {
+
+		ImGui::Begin("Hack Menu");
+		ImGui::Checkbox("Wallhack", &wallhack);
+		ImGui::Checkbox("Chams", &chams);
+		ImGui::Checkbox("Esp", &esp);
+		//circle esp
+		//line esp
+		//text esp
+		//distance esp
+		ImGui::Checkbox("Aimbot", &aimbot);
+		ImGui::SliderInt("Aimsens", &aimsens, 0, 10);
+		ImGui::Text("Aimkey");
+		const char* aimkey_Options[] = { "Shift", "Right Mouse", "Left Mouse", "Middle Mouse", "Ctrl", "Alt", "Capslock", "Space", "X", "C", "V" };
+		ImGui::SameLine();
+		ImGui::Combo("##AimKey", (int*)&aimkey, aimkey_Options, IM_ARRAYSIZE(aimkey_Options));
+		ImGui::SliderInt("Aimfov", &aimfov, 0, 10);
+		ImGui::SliderInt("Aimspeed based on distance", &aimspeed_isbasedon_distance, 0, 4);
+		ImGui::SliderInt("Aimspeed", &aimspeed, 0, 100);
+		ImGui::SliderInt("Aimheight", &aimheight, 0, 200);
+		ImGui::Checkbox("Autoshoot", &autoshoot);
+		ImGui::SliderInt("As activate below this distance", &as_xhairdst, 0, 20);
+		//as_compensatedst
+
+		ImGui::Checkbox("Modelrecfinder", &modelrecfinder);
+		if (modelrecfinder == 1)
 		{
-			if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX < viewport.Width && AimEspInfo[i].vOutY < viewport.Height)
+			if(check_draw_result==1)ImGui::Text("Draw called");
+			if (check_drawindexed_result == 1)ImGui::Text("DrawIndexed called");
+			if (check_drawindexedinstanced_result == 1)ImGui::Text("DrawIndexedInstanced called");
+
+			//bruteforce
+			ImGui::SliderInt("find Stride", &countStride, -1, 100);
+			ImGui::SliderInt("find IndexCount", &countIndexCount, -1, 100);
+			ImGui::SliderInt("find veWidth", &countveWidth, -1, 100);
+			ImGui::SliderInt("find pscWidth", &countpscWidth, -1, 100);
+		}
+
+		ImGui::Checkbox("Wtsfinder", &wtsfinder);
+		if (wtsfinder == 1)
+		{
+			ImGui::Text("valid vscStartSlot = %d", validvscStartSlot);
+			ImGui::Checkbox("method1", &method1);
+			ImGui::Checkbox("method2", &method2);
+			ImGui::Checkbox("method3", &method3);
+			ImGui::Checkbox("method4", &method4);
+
+			DWORD dwTicks = GetTickCount();
+			if ((dwTicks - g_dwLastAction) >= 1000)
 			{
-				//draw box
-				renderer->drawOutlinedRect(Vec4(AimEspInfo[i].vOutX - 7, AimEspInfo[i].vOutY, 12, 12), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f });
-				//renderer->drawOutlinedRect(Vec4(AimEspInfo[i].vOutX - 25.0f, AimEspInfo[i].vOutY, 50, 50), 1.f, Color{ 0.9f, 0.9f, 0.15f, 0.95f }, Color{ 0.f , 0.f, 0.f, 0.2f });
+				//reset buffer every second while bruteforcing values
+				//Log("do something if 1 second has passed");
 
-				//draw text
-				if (pFontWrapper)
-				pFontWrapper->DrawString(pContext, L"o", 14, AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, 0xFFFFFF00, FW1_RESTORESTATE| FW1_CENTER | FW1_ALIASED);
+				//reset to avoid wrong values
+				pStageBufferA = NULL;
+				pStageBufferB = NULL;
 
-				//distance esp
-				swprintf_s(reportValue, L"%d", (int)AimEspInfo[i].vOutZ);
-				if (pFontWrapper)
-					pFontWrapper->DrawString(pContext, reportValue, 14.0f, AimEspInfo[i].vOutX, AimEspInfo[i].vOutY+viewport.Height/50.0f, 0xffffffff, FW1_RESTORESTATE | FW1_CENTER | FW1_ALIASED);
+				//reset var to current ticks
+				g_dwLastAction = dwTicks;
+			}
+			//bruteforce
+			ImGui::SliderInt("WorldViewCBnum", &WorldViewCBnum, 0, 10);
+			ImGui::SliderInt("ProjCBnum", &ProjCBnum, 0, 10);
+			ImGui::SliderInt("matProjnum", &matProjnum, 0, 100);//240
+		}
+
+		ImGui::End();
+	}
+
+
+	targetfound = false;
+	//do esp
+	if (esp == 1)
+	{
+		ImGui::Begin("Transparent", reinterpret_cast<bool*>(true), ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground);
+		ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+		ImGui::SetWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y), ImGuiCond_Always);
+
+		if (AimEspInfo.size() != NULL)
+		{
+			for (unsigned int i = 0; i < AimEspInfo.size(); i++)
+			{
+				if (AimEspInfo[i].vOutX > 1 && AimEspInfo[i].vOutY > 1 && AimEspInfo[i].vOutX < ViewportWidth && AimEspInfo[i].vOutY < ViewportHeight)
+				{
+					//text esp
+					ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY), ImColor(255, 255, 255, 255), "Model", 0, 0.0f, 0); //draw text
+				}
 			}
 		}
+		ImGui::End();
 	}
-	renderer->draw();
-	renderer->end();
 
-	//Keys: RMouse|LMouse|Shift|Ctrl|Alt|Space|X|C
-	if (sOptions[4].Function == 0) Daimkey = VK_RBUTTON;
-	if (sOptions[4].Function == 1) Daimkey = VK_LBUTTON;
-	if (sOptions[4].Function == 2) Daimkey = VK_SHIFT;
-	if (sOptions[4].Function == 3) Daimkey = VK_CONTROL;
-	if (sOptions[4].Function == 4) Daimkey = VK_MENU;
-	if (sOptions[4].Function == 5) Daimkey = VK_SPACE;
-	if (sOptions[4].Function == 6) Daimkey = 0x58; //X
-	if (sOptions[4].Function == 7) Daimkey = 0x43; //C
-	aimheight = sOptions[7].Function;//aimheight
-	preaim = sOptions[10].Function;//preaim
-	
+	if (aimkey == 0) Daimkey = VK_SHIFT;
+	if (aimkey == 1) Daimkey = VK_RBUTTON;
+	if (aimkey == 2) Daimkey = VK_LBUTTON;
+	if (aimkey == 3) Daimkey = VK_MBUTTON;
+	if (aimkey == 4) Daimkey = VK_CONTROL;
+	if (aimkey == 5) Daimkey = VK_MENU;
+	if (aimkey == 6) Daimkey = VK_CAPITAL;
+	if (aimkey == 7) Daimkey = VK_SPACE;
+	if (aimkey == 8) Daimkey = 0x58; //X
+	if (aimkey == 9) Daimkey = 0x43; //C
+	if (aimkey == 10) Daimkey = 0x56; //V
+
 	//aimbot
-	if(sOptions[3].Function == 1) //if aimbot is enabled in menu
-	//if (AimEspInfo.size() != NULL && GetAsyncKeyState(Daimkey) & 0x8000) //GetAsyncKeyState here can cause aimbot to not work for a few people
-	if (AimEspInfo.size() != NULL)
-	{
-		UINT BestTarget = -1;
-		DOUBLE fClosestPos = 99999;
-
-		for (unsigned int i = 0; i < AimEspInfo.size(); i++)
+	if (aimbot == 1)//aimbot pve, aimbot pvp
+		if (AimEspInfo.size() != NULL)
 		{
-			//aimfov
-			float radiusx = (sOptions[6].Function*10.0f) * (ScreenCenterX / 100.0f);
-			float radiusy = (sOptions[6].Function*10.0f) * (ScreenCenterY / 100.0f);
+			UINT BestTarget = -1;
+			DOUBLE fClosestPos = 99999;
 
-			//get crosshairdistance
-			AimEspInfo[i].CrosshairDst = GetDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ScreenCenterX, ScreenCenterY);
-
-			//aim at team 1 or 2 (not needed)
-			//if (aimbot == AimEspInfo[i].iTeam)
-
-			//if in aimbot field of view (fov)
-			if (AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
-
-				//get closest/nearest target to crosshair
-				if (AimEspInfo[i].CrosshairDst < fClosestPos)
-				{
-					fClosestPos = AimEspInfo[i].CrosshairDst;
-					BestTarget = i;
-				}
-		}
-
-		//if nearest target to crosshair
-		if (BestTarget != -1)
-		{
-			double DistX = AimEspInfo[BestTarget].vOutX - ScreenCenterX;
-			double DistY = AimEspInfo[BestTarget].vOutY - ScreenCenterY;
-
-			//aimsens
-			DistX /= (1.0f + (sOptions[5].Function*0.5f));
-			DistY /= (1.0f + (sOptions[5].Function*0.5f));
-
-			//aim
-			if(GetAsyncKeyState(Daimkey) & 0x8000)
-			mouse_event(MOUSEEVENTF_MOVE, (float)DistX, (float)DistY, 0, NULL);
-
-			//autoshoot on
-			//if ((!GetAsyncKeyState(VK_LBUTTON) && (*sOptions[8].Function))) //
-			if ((!GetAsyncKeyState(VK_LBUTTON) && (sOptions[8].Function==1) && (GetAsyncKeyState(Daimkey) & 0x8000)))
+			for (unsigned int i = 0; i < AimEspInfo.size(); i++)
 			{
-				if (!IsPressed)
+				//aimfov
+				float radiusx = (aimfov * 10.0f) * (ScreenCenterX / 100.0f);
+				float radiusy = (aimfov * 10.0f) * (ScreenCenterY / 100.0f);
+
+				//get crosshairdistance
+				AimEspInfo[i].CrosshairDst = GetDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ViewportWidth / 2.0f, ViewportHeight / 2.0f);
+
+				//if in fov
+				if ((int)AimEspInfo[i].vOutX != ScreenCenterX && AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
+
+					//get closest/nearest target to crosshair
+					if (AimEspInfo[i].CrosshairDst < fClosestPos)
+					{
+						fClosestPos = AimEspInfo[i].CrosshairDst;
+						BestTarget = i;
+					}
+			}
+
+			//if nearest target to crosshair
+			if (BestTarget != -1)
+			{
+				double DistX = AimEspInfo[BestTarget].vOutX - ScreenCenterX;
+				double DistY = AimEspInfo[BestTarget].vOutY - ScreenCenterY;
+
+				//DistX /= aimsens * 0.5f;
+				//DistY /= aimsens * 0.5f;
+
+				//aim
+				//if (GetAsyncKeyState(Daimkey) & 0x8000)
+					//mouse_event(MOUSEEVENTF_MOVE, (float)DistX, (float)DistY, 0, NULL);
+
+				//aim
+				if (GetAsyncKeyState(Daimkey) & 0x8000)
+					AimAtPos(AimEspInfo[BestTarget].vOutX, AimEspInfo[BestTarget].vOutY);
+
+				//get crosshairdistance
+				//AimEspInfo[BestTarget].CrosshairDst = GetDst(AimEspInfo[BestTarget].vOutX, AimEspInfo[BestTarget].vOutY, ViewportWidth / 2.0f, ViewportHeight / 2.0f);
+
+				//stabilise aim
+				if (aimspeed_isbasedon_distance == 0) //default steady aimsens
+					AimSpeed = aimsens;
+				else if (aimspeed_isbasedon_distance == 1)
+					AimSpeed = aimsens + (AimEspInfo[BestTarget].CrosshairDst * 0.008f); //0.01f the bigger the distance the slower the aimspeed
+				else if (aimspeed_isbasedon_distance == 2)
+					AimSpeed = aimsens + (AimEspInfo[BestTarget].CrosshairDst * 0.01f); //0.01f the bigger the distance the slower the aimspeed
+				else if (aimspeed_isbasedon_distance == 3)
+					AimSpeed = aimsens + (AimEspInfo[BestTarget].CrosshairDst * 0.012f); //0.01f the bigger the distance the slower the aimspeed
+					//AimSpeed = aimsens + (rand() % 100 / CrosshairDst);     
+				else if (aimspeed_isbasedon_distance == 4)
 				{
-					IsPressed = true;
+					AimSpeed = aimsens + (75.0f / AimEspInfo[BestTarget].CrosshairDst); //100.0f the bigger the distance the faster the aimspeed
+					//AimSpeed = aimsens + (50.0f / CrosshairDst); //50.0f the bigger the distance the faster the aimspeed
+					//float randomnb = rand() % 2; //both
+					//if (randomnb == 0) AimSpeed = aimsens + (75.0f / CrosshairDst); //the bigger the distance the faster the aimspeed
+					//else if (randomnb == 1) AimSpeed = aimsens + (CrosshairDst * 0.01f); //the bigger the distance the slower the aimspeed
+				}
+
+				//autoshoot on
+				if (autoshoot == 1 && !IsPressed && !GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(Daimkey) & 0x8000 && AimEspInfo[BestTarget].CrosshairDst <= as_xhairdst)//if crosshairdst smaller than as_xhairdist then fire                            
+				{
 					mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+					IsPressed = true;
 				}
 			}
 		}
-	}
 	AimEspInfo.clear();
 
 	//autoshoot off
-	if (sOptions[8].Function==1 && IsPressed)
+	if ((autoshoot == 1 && IsPressed && !targetfound) || (autoshoot == 1 && IsPressed && !GetAsyncKeyState(Daimkey)))
 	{
-		if (timeGetTime() - astime >= asdelay)
-		{
-			IsPressed = false;
-			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-			astime = timeGetTime();
-		}
+		IsPressed = false;
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 	}
 
 
-	//logger
-	if (logger && pFontWrapper) //&& countnum >= 0)
-	{
-		swprintf_s(reportValue, L"(Keys:-O P+ I=Log) countnum = %d", countnum);
-		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 100.0f, 0xff00ff00, FW1_RESTORESTATE);
+	//ImGui::EndFrame();
+	ImGui::Render();
+	pContext->OMSetRenderTargets(1, &mainRenderTargetViewD3D11, NULL);
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-		swprintf_s(reportValue, L"(Keys:-Z U+) WorldViewCBnum = %d", WorldViewCBnum);
-		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 120.0f, 0xffffffff, FW1_RESTORESTATE);
-
-		swprintf_s(reportValue, L"(Keys:-H J+) ProjCBnum = %d", ProjCBnum);
-		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 140.0f, 0xffffffff, FW1_RESTORESTATE);
-
-		swprintf_s(reportValue, L"(Keys:-N M+) matProjnum = %d", matProjnum);
-		pFontWrapper->DrawString(pContext, reportValue, 16.0f, 320.0f, 160.0f, 0xffffffff, FW1_RESTORESTATE);
-
-		pFontWrapper->DrawString(pContext, L"F9 = log drawfunc", 16.0f, 320.0f, 180.0f, 0xffffffff, FW1_RESTORESTATE);
-		pFontWrapper->DrawString(pContext, L"F10 = log depth", 16.0f, 320.0f, 200.0f, 0xffffffff, FW1_RESTORESTATE);
-	}
-	
 	return phookD3D11Present(pSwapChain, SyncInterval, Flags);
 }
-
-//==========================================================================================================================
-
-void __stdcall hookD3D11IASetVertexBuffers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumBuffers, ID3D11Buffer *const *ppVertexBuffers, const UINT *pStrides, const UINT *pOffsets)
-{
-	//Stride = *pStrides;
-
-	return phookD3D11IASetVertexBuffers(pContext, StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
-}
-
 //==========================================================================================================================
 
 void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCount, UINT StartIndexLocation, INT BaseVertexLocation)
 {
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("DrawIndexed called");
+	if (IndexCount > 0)
+		check_drawindexed_result = 1;
 
-	if (firstTime2)
-	{
-		firstTime2 = false;
+	ID3D11Buffer* veBuffer;
+	UINT veWidth;
+	UINT Stride;
+	UINT veBufferOffset;
+	D3D11_BUFFER_DESC veDesc;
 
-		//create depthstencilstate depth false
-		D3D11_DEPTH_STENCIL_DESC depthStencilDescfalse = {};
-
-		// Depth state:
-		depthStencilDescfalse.DepthEnable = false;
-		depthStencilDescfalse.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		
-		//for UT4 engine etc.
-		depthStencilDescfalse.DepthFunc = D3D11_COMPARISON_GREATER; //<- can be different in other games
-		
-		// Stencil state:
-		depthStencilDescfalse.StencilEnable = true;
-		depthStencilDescfalse.StencilReadMask = 0xFF;
-		depthStencilDescfalse.StencilWriteMask = 0xFF;
-		
-		// Stencil operations if pixel is front-facing:												
-		depthStencilDescfalse.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDescfalse.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		depthStencilDescfalse.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDescfalse.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-		
-		// Stencil operations if pixel is back-facing:
-		depthStencilDescfalse.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDescfalse.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		depthStencilDescfalse.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDescfalse.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-		
-		
-		hr = pDevice->CreateDepthStencilState(&depthStencilDescfalse, &depthStencilStatefalse);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState"); }
-		
-
-		//create depthstencilstate depth true
-		D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
-		
-		// Depth state:
-		depthStencilDesc.DepthEnable = true;
-		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		
-		//for UT4 engine etc.
-		depthStencilDesc.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
-		
-		// Stencil state:
-		depthStencilDesc.StencilEnable = true;
-		depthStencilDesc.StencilReadMask = 0xFF;
-		depthStencilDesc.StencilWriteMask = 0xFF;
-		
-		// Stencil operations if pixel is front-facing:
-		depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //if models disappear or chams in one color change this
-		
-		// Stencil operations if pixel is back-facing:
-		depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_GREATER_EQUAL; //if models disappear or chams in one color change this
-
-		
-		hr = pDevice->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
-		if (FAILED(hr)) { Log("Failed to CreateDepthStencilState"); }
-
-		//create wireframe
-		D3D11_RASTERIZER_DESC rwDesc;
-		pContext->RSGetState(&rwState);
-		if (rwState != NULL) {
-			rwState->GetDesc(&rwDesc);
-			rwDesc.FillMode = D3D11_FILL_WIREFRAME;
-			rwDesc.CullMode = D3D11_CULL_NONE;
-		}
-		else { Log("No RS state set, defaults are in use"); }
-		hr = pDevice->CreateRasterizerState(&rwDesc, &rwState);
-		if (FAILED(hr)) { Log("Failed to CreateRasterizerState rwDesc"); }
-
-		//solid
-		D3D11_RASTERIZER_DESC rsDesc;
-		pContext->RSGetState(&rsState);
-		if (rsState != NULL) {
-		rsState->GetDesc(&rsDesc);
-		rsDesc.FillMode = D3D11_FILL_SOLID;
-		rsDesc.CullMode = D3D11_CULL_BACK;
-		}
-		else { Log("No RS state set, defaults are in use"); }
-		pDevice->CreateRasterizerState(&rsDesc, &rsState);
-		if (FAILED(hr)) { Log("Failed to CreateRasterizerState rsDesc"); }
+	//get models
+	pContext->IAGetVertexBuffers(0, 1, &veBuffer, &Stride, &veBufferOffset);
+	if (veBuffer) {
+		veBuffer->GetDesc(&veDesc);
+		veWidth = veDesc.ByteWidth;
+	}
+	if (NULL != veBuffer) {
+		veBuffer->Release();
+		veBuffer = NULL;
 	}
 
-	//get stride & vedesc.ByteWidth
-	pContext->IAGetVertexBuffers(0, 1, &veBuffer, &Stride, &veBufferOffset);
-	if (veBuffer != NULL)
-		veBuffer->GetDesc(&vedesc);
-	if (veBuffer != NULL) { veBuffer->Release(); veBuffer = NULL; }
-	
-	//get indesc.ByteWidth (comment out if not used)
-	pContext->IAGetIndexBuffer(&inBuffer, &inFormat, &inOffset);
-	if (inBuffer != NULL)
-		inBuffer->GetDesc(&indesc);
-	if (inBuffer != NULL) { inBuffer->Release(); inBuffer = NULL; }
-	
-	//get pscdesc.ByteWidth (comment out if not used)
-	pContext->PSGetConstantBuffers(pscStartSlot, 1, &pscBuffer);
-	if (pscBuffer != NULL)
+	ID3D11Buffer* pscBuffer;
+	UINT pscWidth;
+	D3D11_BUFFER_DESC pscdesc;
+
+	//get pscdesc.ByteWidth
+	pContext->PSGetConstantBuffers(0, 1, &pscBuffer);
+	if (pscBuffer) {
 		pscBuffer->GetDesc(&pscdesc);
-	if (pscBuffer != NULL) { pscBuffer->Release(); pscBuffer = NULL; }
-
-	//get vscdesc.ByteWidth (comment out if not used)
-	pContext->VSGetConstantBuffers(vscStartSlot, 1, &vscBuffer);
-	if (vscBuffer!=NULL)
-		vscBuffer->GetDesc(&vscdesc);
-	if (vscBuffer != NULL) { vscBuffer->Release(); vscBuffer = NULL; }
-
+		pscWidth = pscdesc.ByteWidth;
+	}
+	if (NULL != pscBuffer) {
+		pscBuffer->Release();
+		pscBuffer = NULL;
+	}
 
 	//wallhack/chams
-	if (sOptions[0].Function == 1 || sOptions[1].Function == 1 || sOptions[1].Function == 2) //if wallhack/chams option is enabled in menu
-	///////////////////////////////////////////////
-	//MODEL RECOGNTION values and what you use depends on the game, log some models and use what works best. Stride && pscdesc.ByteWidth etc. Use IndexCount if models don't change with distance
-	if (countnum == Stride) //Stride alone is usually not enough
-	//////////////////////////////////////////////
-	/*
-	//unreal4 models
+	if (wallhack == 1 || chams == 1) //if wallhack or chams option is enabled in menu
+		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------------
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <-----------------
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------
+		/*
+		//unreal4 models
 		if ((Stride == 32 && IndexCount == 10155) ||
 			(Stride == 44 && IndexCount == 11097) ||
 			(Stride == 40 && IndexCount == 11412) ||
 			(Stride == 40 && IndexCount == 11487) ||
 			(Stride == 44 && IndexCount == 83262) ||
 			(Stride == 40 && IndexCount == 23283))
-
-			//qc models
-			//if (Stride >= 16 && vedesc.ByteWidth >= 14000000 && vedesc.ByteWidth <= 45354840) 
-	*/
+		*/
 		{
-			// behind walls
-			// in some games depthStencilStatefalse parameters need tweaking, depthStencilDescfalse.DepthFunc etc.
+			//get orig
+			if (wallhack == 1)
+				pContext->OMGetDepthStencilState(&DepthStencilState_ORIG, 0); //get original
 
-			pContext->OMGetDepthStencilState(&origDepthStencilState, &stencilRef); //get original
+			//set off
+			if (wallhack == 1)
+				pContext->OMSetDepthStencilState(DepthStencilState_FALSE, 0); //depthstencil off
 
-			//depth off for wallhack and chams
-			if (sOptions[0].Function == 1 || sOptions[1].Function == 1 || sOptions[1].Function == 2)
-				pContext->OMSetDepthStencilState(depthStencilStatefalse, stencilRef); //depth off <-------
+			if (chams == 1)
+				pContext->PSSetShader(sGreen, NULL, NULL);
+				//pContext->PSSetShaderResources(0, 1, &textureColor); //magenta
 
-			//release
-			if (sOptions[0].Function == 1)
-				SAFE_RELEASE(depthStencilStatefalse);
+			phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation); //redraw
 
+			if (chams == 1)
+				pContext->PSSetShader(sMagenta, NULL, NULL);
 
-			//shader chams
-			if (sOptions[1].Function == 1)
-				pContext->PSSetShader(psRed, NULL, NULL);
-
-			//texture chams (use in games where shader turns transparent)
-			if (sOptions[1].Function == 2)
-			{
-				for (int x1 = 0; x1 <= 3; x1++) //3-10, high value may decrease fps
-				{
-					pContext->PSSetShaderResources(x1, 1, &texSRVr);
-				}
-				pContext->PSSetSamplers(0, 1, &pSamplerState);
-			}
-
-			phookD3D11DrawIndexed(pContext, IndexCount, StartIndexLocation, BaseVertexLocation);
-
-			// in front of walls
-			// in some games we need to restore origDepthStencilState and in others use depthStencilState
-
-			//orig depth on for wallhack 
-			if (sOptions[0].Function == 1)
-				pContext->OMSetDepthStencilState(origDepthStencilState, stencilRef); //depth on <-------
-
-			//custom depth on for chams
-			if (sOptions[1].Function == 1 || sOptions[1].Function == 2)
-				pContext->OMSetDepthStencilState(depthStencilState, stencilRef);
+			//restore orig
+			if (wallhack == 1)
+				pContext->OMSetDepthStencilState(DepthStencilState_ORIG, 0); //depthstencil on
 
 			//release
-			if (sOptions[1].Function == 1 || sOptions[1].Function == 2)
-				SAFE_RELEASE(depthStencilStatefalse);
-
-			//release
-			if (sOptions[0].Function == 1)
-				SAFE_RELEASE(origDepthStencilState);
-
-
-			//shader chams
-			if (sOptions[1].Function == 1)
-				pContext->PSSetShader(psGreen, NULL, NULL);
-
-			//texture chams (use in games where shader turns transparent)
-			if (sOptions[1].Function == 2)
-			{
-				for (int y1 = 0; y1 <= 3; y1++) //3-10, high value may decrease fps
-				{
-					pContext->PSSetShaderResources(y1, 1, &texSRVg);
-				}
-				pContext->PSSetSamplers(0, 1, &pSamplerState);
-			}
+			if (wallhack == 1)
+				SAFE_RELEASE(DepthStencilState_ORIG); //release
 		}
-
 
 	//esp/aimbot
-	if ((sOptions[2].Function == 1) || (sOptions[3].Function == 1)) //if esp/aimbot option is enabled in menu
-	//MODEL RECOGNTION values depend on the game, log some models and use what works best
-	if (countnum == Stride) //Stride alone is not enough, add pscdesc.ByteWidth and/or IndexCount etc.
-	/*
-	//unreal4 models
-	if ((Stride == 32 && IndexCount == 10155) ||
-		(Stride == 44 && IndexCount == 11097) ||
-		(Stride == 40 && IndexCount == 11412) ||
-		(Stride == 40 && IndexCount == 11487) ||
-		(Stride == 44 && IndexCount == 83262) ||
-		(Stride == 40 && IndexCount == 23283))
-	*/
+	if (esp == 1 || aimbot == 1) //if esp/aimbot option is enabled in menu
+		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------------
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <-----------------
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------
+		/*
+		//unreal4 models
+		if ((Stride == 32 && IndexCount == 10155) ||
+			(Stride == 44 && IndexCount == 11097) ||
+			(Stride == 40 && IndexCount == 11412) ||
+			(Stride == 40 && IndexCount == 11487) ||
+			(Stride == 44 && IndexCount == 83262) ||
+			(Stride == 40 && IndexCount == 23283))
+		*/
 		{
-			pContext->OMGetDepthStencilState(&origDepthStencilState, &stencilRef);
-			if (origDepthStencilState != NULL && stencilRef == 0)
-			{
-				D3D11_DEPTH_STENCIL_DESC Desc;
-				origDepthStencilState->GetDesc(&Desc);
-
-				//debug: Log depth for optimisation
-				if (GetAsyncKeyState(VK_F10) & 1) //hold F10 to log
-					Log("Desc.DepthEnable == %d && Desc.DepthFunc == %d && Desc.StencilReadMask == %d && Desc.StencilWriteMask == %d", Desc.DepthEnable, Desc.DepthFunc, Desc.StencilReadMask, Desc.StencilWriteMask);
-
-				//log.txt example:
-				//Desc.DepthEnable == 1 && Desc.DepthFunc == 7 && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255)
-
-				//paste logged values to reduce fps loss:
-				//if (Desc.DepthEnable == 1 && Desc.DepthFunc == 7/*<-or 3 etc.)*/ && Desc.StencilReadMask == 255 && Desc.StencilWriteMask == 255)
-					//more optimisation (optional/game dependant):
-					//if (vedesc.Usage == 0/*<- or 1*/ && veBufferOffset == 0)
-					//{
-						AddModel(pContext); //w2s
-					//}
-			}
-			SAFE_RELEASE(origDepthStencilState);
+			AddModel(pContext); //w2s
+			targetfound = true;
 		}
-	
-
-	//removal example
-	//if (sOptions[xx].Function == 1)
-	//if (Stride == xx)
-		//return;
 
 
-	//small bruteforce logger
-	//press ALT + CTRL + L in game to enable logger
-	//hold P till models turn invisible, press I to log values of those models to log.txt
-	if (logger)
+	//menu logger
+	if (modelrecfinder == 1)
 	{
-		if (countnum == Stride) //try using stride first to find models
-		//if (countnum == IndexCount / 100)
-			if (GetAsyncKeyState('I') & 1)
-			Log("Stride == %d && IndexCount == %d && indesc.ByteWidth == %d && vedesc.ByteWidth == %d && pscdesc.ByteWidth == %d && vscdesc.ByteWidth == %d && pssrStartSlot == %d && vscStartSlot == %d && pssStartSlot == %d && vedesc.Usage == %d && veBufferOffset == %d", 
-				Stride, IndexCount, indesc.ByteWidth, vedesc.ByteWidth, pscdesc.ByteWidth, vscdesc.ByteWidth, pssrStartSlot, vscStartSlot, pssStartSlot, vedesc.Usage, veBufferOffset); //Descr.Format, Descr.Buffer.NumElements, texdesc.Format, texdesc.Height, texdesc.Width 
+		if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
+		//if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
+			validvscStartSlot = vscStartSlot;
 
-		if (countnum == Stride)
-		//if (countnum == IndexCount / 100)
+		if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
+			//if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
+			//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
+			if (GetAsyncKeyState(VK_END) & 1) //press END to log to log.txt
+				Log("Stride == %d && IndexCount == %d && veWidth == %d && pscWidth == %d", Stride, IndexCount, veWidth, pscWidth);
+
+		if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
+			//if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
+			//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
 		{
-			//delete texture
-			return;
+			//pContext->PSSetShader(sGreen, NULL, NULL);
+			return; //delete selected texture
 		}
 	}
 
@@ -666,97 +498,11 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 //==========================================================================================================================
 
-void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView *const *ppShaderResourceViews)
-{
-	pssrStartSlot = StartSlot;
-
-	//logger keys (here for compatibility reasons)
-	if (GetAsyncKeyState(VK_MENU) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(0x4C) & 1) //ALT + CTRL + L toggles logger
-		logger = !logger;
-	if (logger && pFontWrapper)
-	{
-		//hold down P key until a texture is wallhacked, press I to log values of those textures
-		if (GetAsyncKeyState('O') & 1) //-
-			countnum--;
-		if (GetAsyncKeyState('P') & 1) //+
-			countnum++;
-		if (GetAsyncKeyState(VK_MENU) && GetAsyncKeyState('9') & 1) //reset, set to -1
-			countnum = -1;
-
-		//bruteforce WorldViewCBnum
-		if (GetAsyncKeyState('Z') & 1) //-
-			WorldViewCBnum--;
-		if (GetAsyncKeyState('U') & 1) //+
-			WorldViewCBnum++;
-		if (GetAsyncKeyState(0x37) & 1) //7 reset, set to 0
-			WorldViewCBnum = 0;
-		if (WorldViewCBnum < 0)
-			WorldViewCBnum = 0;
-
-		//bruteforce ProjCBnum
-		if (GetAsyncKeyState('H') & 1) //-
-			ProjCBnum--;
-		if (GetAsyncKeyState('J') & 1) //+
-			ProjCBnum++;
-		if (GetAsyncKeyState(0x38) & 1) //8 reset, set to 0
-			ProjCBnum = 0;
-		if (ProjCBnum < 0)
-			ProjCBnum = 0;
-
-		//bruteforce matProjnum
-		if (GetAsyncKeyState('N') & 1) //-
-			matProjnum--;
-		if (GetAsyncKeyState('M') & 1) //+
-			matProjnum++;
-		if (GetAsyncKeyState(0x39) & 1) //9 reset, set to 0
-			matProjnum = 0;
-		if (matProjnum < 0)
-			matProjnum = 0;
-	}
-
-	/*
-	//texture stuff (usually not needed)
-	for (UINT j = 0; j < NumViews; j++)
-	{
-		ID3D11ShaderResourceView* pShaderResView = ppShaderResourceViews[j];
-		if (pShaderResView)
-		{
-			pShaderResView->GetDesc(&Descr);
-
-			ID3D11Resource *Resource;
-			pShaderResView->GetResource(&Resource);
-			ID3D11Texture2D *Texture = (ID3D11Texture2D *)Resource;
-			Texture->GetDesc(&texdesc);
-			
-			SAFE_RELEASE(Resource);
-			SAFE_RELEASE(Texture);
-		}
-	}
-	*/
-
-	/*
-	//ALTERNATIVE wallhack example for f'up games, only use this if no draw function works for wallhack
-	if (pssrStartSlot == 1) //if black screen, find correct pssrStartSlot
-		pContext->OMSetDepthStencilState(depthStencilStatefalse, 1);
-	if (pscdesc.ByteWidth == 224 && Descr.Format == 71) //models in Tom Clancys Rainbow Six Siege old version
-	{
-		pContext->OMSetDepthStencilState(depthStencilStatefalse, stencilRef);
-		//pContext->PSSetShader(psRed, NULL, NULL);
-	}
-	else if (pssrStartSlot == 1) //if black screen, find correct pssrStartSlot
-		pContext->OMSetDepthStencilState(depthStencilState, stencilRef); //depth on
-	*/
-
-	return phookD3D11PSSetShaderResources(pContext, StartSlot, NumViews, ppShaderResourceViews);
-}
-
-//==========================================================================================================================
-
 void __stdcall hookD3D11DrawIndexedInstanced(ID3D11DeviceContext* pContext, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
 {
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("DrawIndexedInstanced called");
-	
+	if (IndexCountPerInstance > 0)
+		check_drawindexedinstanced_result = 1;
+
 	return phookD3D11DrawIndexedInstanced(pContext, IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
 
@@ -764,40 +510,39 @@ void __stdcall hookD3D11DrawIndexedInstanced(ID3D11DeviceContext* pContext, UINT
 
 void __stdcall hookD3D11Draw(ID3D11DeviceContext* pContext, UINT VertexCount, UINT StartVertexLocation)
 {
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("Draw called");
+	if (VertexCount > 0)
+		check_draw_result = 1;
 
 	return phookD3D11Draw(pContext, VertexCount, StartVertexLocation);
 }
 
 //==========================================================================================================================
 
-void __stdcall hookD3D11DrawInstanced(ID3D11DeviceContext* pContext, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation)
+void __stdcall hookD3D11PSSetShaderResources(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews)
 {
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("DrawInstanced called");
+	//pssrStartSlot = StartSlot;
 
-	return phookD3D11DrawInstanced(pContext, VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
-}
+	/*
+	//texture stuff usually not needed
+	for (UINT j = 0; j < NumViews; j++)
+	{
+		//resources loop
+		ID3D11ShaderResourceView* pShaderResView = ppShaderResourceViews[j];
+		if (pShaderResView)
+		{
+			pShaderResView->GetDesc(&Descr);
 
-//==========================================================================================================================
+			ID3D11Resource* Resource;
+			pShaderResView->GetResource(&Resource);
+			ID3D11Texture2D* Texture = (ID3D11Texture2D*)Resource;
+			Texture->GetDesc(&texdesc);
 
-void __stdcall hookD3D11DrawInstancedIndirect(ID3D11DeviceContext* pContext, ID3D11Buffer *pBufferForArgs, UINT AlignedByteOffsetForArgs)
-{
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("DrawInstancedIndirect called");
-
-	return phookD3D11DrawInstancedIndirect(pContext, pBufferForArgs, AlignedByteOffsetForArgs);
-}
-
-//==========================================================================================================================
-
-void __stdcall hookD3D11DrawIndexedInstancedIndirect(ID3D11DeviceContext* pContext, ID3D11Buffer *pBufferForArgs, UINT AlignedByteOffsetForArgs)
-{
-	if (GetAsyncKeyState(VK_F9) & 1)
-		Log("DrawIndexedInstancedIndirect called");
-
-	return phookD3D11DrawIndexedInstancedIndirect(pContext, pBufferForArgs, AlignedByteOffsetForArgs);
+			SAFE_RELEASE(Resource);
+			SAFE_RELEASE(Texture);
+		}
+	}
+	*/
+	return phookD3D11PSSetShaderResources(pContext, StartSlot, NumViews, ppShaderResourceViews);
 }
 
 //==========================================================================================================================
@@ -808,34 +553,6 @@ void __stdcall hookD3D11VSSetConstantBuffers(ID3D11DeviceContext* pContext, UINT
 	vscStartSlot = StartSlot;
 
 	return phookD3D11VSSetConstantBuffers(pContext, StartSlot, NumBuffers, ppConstantBuffers);
-}
-
-//==========================================================================================================================
-
-void __stdcall hookD3D11PSSetSamplers(ID3D11DeviceContext* pContext, UINT StartSlot, UINT NumSamplers, ID3D11SamplerState *const *ppSamplers)
-{
-	pssStartSlot = StartSlot;
-
-	return phookD3D11PSSetSamplers(pContext, StartSlot, NumSamplers, ppSamplers);
-}
-
-//==========================================================================================================================
-
-void __stdcall hookD3D11CreateQuery(ID3D11Device* pDevice, const D3D11_QUERY_DESC *pQueryDesc, ID3D11Query **ppQuery)
-{
-	/*
-	//this is required in some games for better wallhack (REDUCES FPS, NOT recommended)
-	//disables Occlusion which prevents rendering player models through certain objects (used by wallhack to see models through walls at all distances)
-	if (pQueryDesc->Query == D3D11_QUERY_OCCLUSION)
-	{
-		D3D11_QUERY_DESC oqueryDesc = CD3D11_QUERY_DESC();
-		(&oqueryDesc)->MiscFlags = pQueryDesc->MiscFlags;
-		(&oqueryDesc)->Query = D3D11_QUERY_TIMESTAMP;
-
-		return phookD3D11CreateQuery(pDevice, &oqueryDesc, ppQuery);
-	}
-	*/
-	return phookD3D11CreateQuery(pDevice, pQueryDesc, ppQuery);
 }
 
 //==========================================================================================================================
@@ -851,6 +568,8 @@ DWORD __stdcall InitializeHook(LPVOID)
 		Sleep(4000);
 	} while (!hDXGIDLL);
 	Sleep(100);
+
+	oWndProc = (WNDPROC)SetWindowLongPtr(window, GWLP_WNDPROC, (LONG_PTR)WndProc);
 
     IDXGISwapChain* pSwapChain;
 
@@ -925,30 +644,21 @@ DWORD __stdcall InitializeHook(LPVOID)
 	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pSwapChainVtable[13], hookD3D11ResizeBuffers, reinterpret_cast<void**>(&phookD3D11ResizeBuffers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[13]) != MH_OK) { return 1; }
-	//if (MH_CreateHook((DWORD_PTR*)pContextVTable[18], hookD3D11IASetVertexBuffers, reinterpret_cast<void**>(&phookD3D11IASetVertexBuffers)) != MH_OK) { return 1; }
-	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[18]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[8], hookD3D11PSSetShaderResources, reinterpret_cast<void**>(&phookD3D11PSSetShaderResources)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[12], hookD3D11DrawIndexed, reinterpret_cast<void**>(&phookD3D11DrawIndexed)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }	
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[20], hookD3D11DrawIndexedInstanced, reinterpret_cast<void**>(&phookD3D11DrawIndexedInstanced)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[20]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[13], hookD3D11Draw, reinterpret_cast<void**>(&phookD3D11Draw)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[13]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[21], hookD3D11DrawInstanced, reinterpret_cast<void**>(&phookD3D11DrawInstanced)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[21]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[40], hookD3D11DrawInstancedIndirect, reinterpret_cast<void**>(&phookD3D11DrawInstancedIndirect)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[40]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[39], hookD3D11DrawIndexedInstancedIndirect, reinterpret_cast<void**>(&phookD3D11DrawIndexedInstancedIndirect)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[39]) != MH_OK) { return 1; }
-
+	//DrawInstanced
+	//DrawInstancedIndirect
+	//DrawIndexedInstancedIndirect
+	
+	//if (MH_CreateHook((DWORD_PTR*)pContextVTable[8], hookD3D11PSSetShaderResources, reinterpret_cast<void**>(&phookD3D11PSSetShaderResources)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[7], hookD3D11VSSetConstantBuffers, reinterpret_cast<void**>(&phookD3D11VSSetConstantBuffers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pContextVTable[10], hookD3D11PSSetSamplers, reinterpret_cast<void**>(&phookD3D11PSSetSamplers)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
-	if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[24], hookD3D11CreateQuery, reinterpret_cast<void**>(&phookD3D11CreateQuery)) != MH_OK) { return 1; }
-	if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
 	
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
@@ -981,19 +691,13 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 		if (MH_Uninitialize() != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pSwapChainVtable[13]) != MH_OK) { return 1; }
-		//if (MH_DisableHook((DWORD_PTR*)pContextVTable[18]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[12]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[20]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[13]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[21]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[40]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[39]) != MH_OK) { return 1; }
 
+		//if (MH_DisableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pContextVTable[10]) != MH_OK) { return 1; }
-		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[24]) != MH_OK) { return 1; }
 		break;
 	}
 	return TRUE;
