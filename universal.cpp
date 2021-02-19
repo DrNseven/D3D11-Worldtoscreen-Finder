@@ -137,6 +137,9 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 			GenerateTexture(0xff00ff00, DXGI_FORMAT_R10G10B10A2_UNORM); //DXGI_FORMAT_R32G32B32A32_FLOAT); //DXGI_FORMAT_R8G8B8A8_UNORM; 
 
+			//load cfg settings
+			LoadCfg();
+
 			initonce = true;
 		}
 		else
@@ -167,6 +170,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 	ScreenCenterY = ViewportHeight / 2.0f;
 
 	if (GetAsyncKeyState(VK_INSERT) & 1) {
+		SaveCfg(); //save settings
 		showmenu = !showmenu;
 	}
 

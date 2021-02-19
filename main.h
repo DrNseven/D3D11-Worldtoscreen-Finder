@@ -28,7 +28,7 @@ int as_xhairdst = 7.0;						//autoshoot activates below this crosshair distance
 DWORD Daimkey = VK_RBUTTON;		//aimkey
 bool IsPressed = false;
 bool targetfound = false;
-//int preaim = 0;				//praim to not aim behind
+//int preaim = 0;				//preaim to not aim behind
 
 bool modelrecfinder = 1;
 int countStride = -1;
@@ -104,7 +104,6 @@ void Log(const char* fmt, ...)
 	if (logfile.is_open() && text)	logfile << text << endl;
 	logfile.close();
 }
-
 
 #include <D3Dcompiler.h> //generateshader
 #pragma comment(lib, "D3dcompiler.lib")
@@ -459,4 +458,62 @@ void AddModel(ID3D11DeviceContext * pContext)
 	//
 	}
 
+}
+
+
+#include <string>
+#include <fstream>
+void SaveCfg()
+{
+	ofstream fout;
+	fout.open(GetDirFile("w2sf.ini"), ios::trunc);
+	fout << "Wallhack " << wallhack << endl;
+	fout << "Chams " << chams << endl;
+	fout << "Esp " << esp << endl;
+	fout << "Aimbot " << aimbot << endl;
+	fout << "Aimkey " << aimkey << endl;
+	fout << "Aimfov " << aimfov << endl;
+	fout << "Aimspeedisbasedondistance " << aimspeed_isbasedon_distance << endl;
+	fout << "Aimspeed " << aimspeed << endl;
+	fout << "Aimheight " << aimheight << endl;
+	fout << "Autoshoot " << autoshoot << endl;
+	fout << "AsXhairdst " << as_xhairdst << endl;
+	fout << "Modelrecfinder " << modelrecfinder << endl;
+	fout << "Wtsfinder " << wtsfinder << endl;
+	fout << "Method1 " << method1 << endl;
+	fout << "Method2 " << method2 << endl;
+	fout << "Method3 " << method3 << endl;
+	fout << "Method4 " << method4 << endl;
+	fout << "WorldViewCBnum " << WorldViewCBnum << endl;
+	fout << "ProjCBnum " << ProjCBnum << endl;
+	fout << "matProjnum " << matProjnum << endl;
+	fout.close();
+}
+
+void LoadCfg()
+{
+	ifstream fin;
+	string Word = "";
+	fin.open(GetDirFile("w2sf.ini"), ifstream::in);
+	fin >> Word >> wallhack;
+	fin >> Word >> chams;
+	fin >> Word >> esp;
+	fin >> Word >> aimbot;
+	fin >> Word >> aimkey;
+	fin >> Word >> aimfov;
+	fin >> Word >> aimspeed_isbasedon_distance;
+	fin >> Word >> aimspeed;
+	fin >> Word >> aimheight;
+	fin >> Word >> autoshoot;
+	fin >> Word >> as_xhairdst;
+	fin >> Word >> modelrecfinder;
+	fin >> Word >> wtsfinder;
+	fin >> Word >> method1;
+	fin >> Word >> method2;
+	fin >> Word >> method3;
+	fin >> Word >> method4;
+	fin >> Word >> WorldViewCBnum;
+	fin >> Word >> ProjCBnum;
+	fin >> Word >> matProjnum;
+	fin.close();
 }
