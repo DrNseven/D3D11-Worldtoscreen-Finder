@@ -474,19 +474,19 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	if (modelrecfinder == 1)
 	{
 		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
 			validvscStartSlot = vscStartSlot;
 
 		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
 			if (GetAsyncKeyState(VK_END) & 1) //press END to log to log.txt
 				Log("Stride == %d && IndexCount == %d && veWidth == %d && pscWidth == %d", Stride, IndexCount, veWidth, pscWidth);
 
 		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000)
+		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
+		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
 		{
 			//pContext->PSSetShader(sGreen, NULL, NULL);
 			return; //delete selected texture
