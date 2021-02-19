@@ -31,6 +31,7 @@ bool targetfound = false;
 //int preaim = 0;				//preaim to not aim behind
 
 bool modelrecfinder = 1;
+int modelfindmode = 1;
 int countStride = -1;
 int countIndexCount = -1;
 int countveWidth = -1;

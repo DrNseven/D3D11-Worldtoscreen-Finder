@@ -196,21 +196,22 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		ImGui::SameLine();
 		ImGui::Combo("##AimKey", (int*)&aimkey, aimkey_Options, IM_ARRAYSIZE(aimkey_Options));
 		ImGui::SliderInt("Aimfov", &aimfov, 0, 10);
-		ImGui::SliderInt("Aimspeed based on distance", &aimspeed_isbasedon_distance, 0, 4);
+		ImGui::SliderInt("Aimspeed uses distance", &aimspeed_isbasedon_distance, 0, 4);
 		ImGui::SliderInt("Aimspeed", &aimspeed, 0, 100);
 		ImGui::SliderInt("Aimheight", &aimheight, 0, 200);
 		ImGui::Checkbox("Autoshoot", &autoshoot);
-		ImGui::SliderInt("As activate below this distance", &as_xhairdst, 0, 20);
+		ImGui::SliderInt("As xhair dst", &as_xhairdst, 0, 20);
 		//as_compensatedst
 
 		ImGui::Checkbox("Modelrecfinder", &modelrecfinder);
 		if (modelrecfinder == 1)
 		{
-			if(check_draw_result==1)ImGui::Text("Draw called");
-			if (check_drawindexed_result == 1)ImGui::Text("DrawIndexed called");
-			if (check_drawindexedinstanced_result == 1)ImGui::Text("DrawIndexedInstanced called");
+			if(check_draw_result==1)ImGui::Text("Draw called."); ImGui::SameLine();
+			if (check_drawindexed_result == 1)ImGui::Text("DrawIndexed called."); ImGui::SameLine();
+			if (check_drawindexedinstanced_result == 1)ImGui::Text("DrawIndexedInstanced called.");
 
 			//bruteforce
+			ImGui::SliderInt("Modelfind Mode", &modelfindmode, 1, 3);
 			ImGui::SliderInt("find Stride", &countStride, -1, 100);
 			ImGui::SliderInt("find IndexCount", &countIndexCount, -1, 100);
 			ImGui::SliderInt("find veWidth", &countveWidth, -1, 100);
@@ -415,9 +416,9 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//wallhack/chams
 	if (wallhack == 1 || chams == 1) //if wallhack or chams option is enabled in menu
-		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------------
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <-----------------
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------
+	if( ((modelfindmode == 1) && (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 1))||	//model rec (replace later with logged values) <--
+		((modelfindmode == 2) && (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10))|| //model rec (replace later with logged values) <--
+		((modelfindmode == 3) && (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 100)) )//model rec (replace later with logged values) <--
 		/*
 		//unreal4 models
 		if ((Stride == 32 && IndexCount == 10155) ||
@@ -456,9 +457,9 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 
 	//esp/aimbot
 	if (esp == 1 || aimbot == 1) //if esp/aimbot option is enabled in menu
-		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------------
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <-----------------
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10) //model rec (replace later with the logged values) <---------------
+	if (((modelfindmode == 1) && (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 1)) ||	//model rec (replace later with logged values) <--
+		((modelfindmode == 2) && (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)) || //model rec (replace later with logged values) <--
+		((modelfindmode == 3) && (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 100)))//model rec (replace later with logged values) <--
 		/*
 		//unreal4 models
 		if ((Stride == 32 && IndexCount == 10155) ||
@@ -477,21 +478,20 @@ void __stdcall hookD3D11DrawIndexed(ID3D11DeviceContext* pContext, UINT IndexCou
 	//menu logger
 	if (modelrecfinder == 1)
 	{
-		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
+		//log selected values
+		if (((modelfindmode == 1) && (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 1)) ||	//model rec (replace later with logged values) <--
+		((modelfindmode == 2) && (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)) || //model rec (replace later with logged values) <--
+		((modelfindmode == 3) && (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 100)))//model rec (replace later with logged values) <--
+		if (GetAsyncKeyState(VK_END) & 1) //press END to log to log.txt
+			Log("Stride == %d && IndexCount == %d && veWidth == %d && pscWidth == %d", Stride, IndexCount, veWidth, pscWidth);
+
+		//highlight selected
+		if (((modelfindmode == 1) && (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 1)) ||	//model rec (replace later with logged values) <--
+		((modelfindmode == 2) && (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)) || //model rec (replace later with logged values) <--
+		((modelfindmode == 3) && (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 100)))//model rec (replace later with logged values) <--
+		{
 			validvscStartSlot = vscStartSlot;
 
-		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
-			if (GetAsyncKeyState(VK_END) & 1) //press END to log to log.txt
-				Log("Stride == %d && IndexCount == %d && veWidth == %d && pscWidth == %d", Stride, IndexCount, veWidth, pscWidth);
-
-		//if (countStride == Stride || countIndexCount == IndexCount / 10 || countveWidth == veWidth / 100 || countpscWidth == pscWidth / 10)
-		if (countStride == Stride || countIndexCount == IndexCount / 100 || countveWidth == veWidth / 1000 || countpscWidth == pscWidth / 10)
-		//if (countStride == Stride || countIndexCount == IndexCount / 1000 || countveWidth == veWidth / 10000 || countpscWidth == pscWidth / 10)
-		{
 			//pContext->PSSetShader(sGreen, NULL, NULL);
 			return; //delete selected texture
 		}
