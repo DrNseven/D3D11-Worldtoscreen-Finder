@@ -208,10 +208,15 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		{
 			if(check_draw_result==1)ImGui::Text("Draw called."); ImGui::SameLine();
 			if (check_drawindexed_result == 1)ImGui::Text("DrawIndexed called."); ImGui::SameLine();
-			if (check_drawindexedinstanced_result == 1)ImGui::Text("DrawIndexedInstanced called.");
+			if (check_drawindexedinstanced_result == 1)ImGui::Text("DrawIndexedInstanced called."); 
+
+			//ImGui::SliderInt("Modelfind Mode", &modelfindmode, 1, 3);
+			ImGui::NewLine();
+			if (modelfindmode == 1)ImGui::SliderInt("Modelfind Mode 1 (Step 10)", &modelfindmode, 1, 3); 
+			else if (modelfindmode == 2)ImGui::SliderInt("Modelfind Mode 2 (Step 100)", &modelfindmode, 1, 3);
+			else if (modelfindmode == 3)ImGui::SliderInt("Modelfind Mode 3 (Step 1000)", &modelfindmode, 1, 3);
 
 			//bruteforce
-			ImGui::SliderInt("Modelfind Mode", &modelfindmode, 1, 3);
 			ImGui::SliderInt("find Stride", &countStride, -1, 100);
 			ImGui::SliderInt("find IndexCount", &countIndexCount, -1, 100);
 			ImGui::SliderInt("find veWidth", &countveWidth, -1, 100);
@@ -301,7 +306,7 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 				AimEspInfo[i].CrosshairDst = GetDst(AimEspInfo[i].vOutX, AimEspInfo[i].vOutY, ViewportWidth / 2.0f, ViewportHeight / 2.0f);
 
 				//if in fov
-				if ((int)AimEspInfo[i].vOutX != ScreenCenterX && AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
+				if (AimEspInfo[i].vOutX >= ScreenCenterX - radiusx && AimEspInfo[i].vOutX <= ScreenCenterX + radiusx && AimEspInfo[i].vOutY >= ScreenCenterY - radiusy && AimEspInfo[i].vOutY <= ScreenCenterY + radiusy)
 
 					//get closest/nearest target to crosshair
 					if (AimEspInfo[i].CrosshairDst < fClosestPos)
@@ -314,8 +319,8 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			//if nearest target to crosshair
 			if (BestTarget != -1)
 			{
-				double DistX = AimEspInfo[BestTarget].vOutX - ScreenCenterX;
-				double DistY = AimEspInfo[BestTarget].vOutY - ScreenCenterY;
+				//double DistX = AimEspInfo[BestTarget].vOutX - ScreenCenterX;
+				//double DistY = AimEspInfo[BestTarget].vOutY - ScreenCenterY;
 
 				//DistX /= aimsens * 0.5f;
 				//DistY /= aimsens * 0.5f;
