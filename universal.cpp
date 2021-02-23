@@ -18,13 +18,13 @@
 #include "ImGui\imgui_impl_dx11.h"
 
 //dx sdk dir
-#include <d3d9.h>
-#include "DXSDK\d3dx9.h"
-#if defined _M_X64
-#pragma comment(lib, "DXSDK/x64/d3dx9.lib") 
-#elif defined _M_IX86
-#pragma comment(lib, "DXSDK/x86/d3dx9.lib")
-#endif
+//#include <d3d9.h>
+//#include "DXSDK\d3dx9.h"
+//#if defined _M_X64
+//#pragma comment(lib, "DXSDK/x64/d3dx9.lib") 
+//#elif defined _M_IX86
+//#pragma comment(lib, "DXSDK/x86/d3dx9.lib")
+//#endif
 
 //DX Includes
 #include <DirectXMath.h>
