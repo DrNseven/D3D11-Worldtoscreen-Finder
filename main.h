@@ -452,52 +452,52 @@ void AddModel(ID3D11DeviceContext * pContext)
 
 	if (method3 == 1)
 	{
-		D3DXVECTOR4 out;
-		D3DXMATRIX pos = (float*)matProj;
-		D3DXMATRIX bonemat = (float*)matWorldView;
-		D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
+		//D3DXVECTOR4 out;
+		//D3DXMATRIX pos = (float*)matProj;
+		//D3DXMATRIX bonemat = (float*)matWorldView;
+		//D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
 		//D3DXMatrixIdentity(&bonemat);
 
 		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
-		out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
-		out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
-		out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
-		out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
+		//out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
+		//out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
+		//out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
+		//out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
 			
 		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
 		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
 
-		float xx, yy;
-		xx = ((out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
-		yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+		//float xx, yy;
+		//xx = ((out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
+		//yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
 
-		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
-		AimEspInfo.push_back(pAimEspInfo);
+		//AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
+		//AimEspInfo.push_back(pAimEspInfo);
 	}
 
 	if (method4 == 1)
 	{
-		D3DXVECTOR4 out;
-		D3DXMATRIX pos = (float*)matProj;
-		D3DXMATRIX bonemat = (float*)matWorldView;
-		D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
+		//D3DXVECTOR4 out;
+		//D3DXMATRIX pos = (float*)matProj;
+		//D3DXMATRIX bonemat = (float*)matWorldView;
+		//D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
 		//D3DXMatrixIdentity(&bonemat);
 
 		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
-		out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
-		out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
-		out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
-		out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
+		//out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
+		//out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
+		//out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
+		//out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
 
 		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
 		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
 
-		float xx, yy;
-		xx = (-(out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
-		yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+		//float xx, yy;
+		//xx = (-(out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
+		//yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
 
-		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
-		AimEspInfo.push_back(pAimEspInfo);
+		//AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
+		//AimEspInfo.push_back(pAimEspInfo);
 	}
 
 }
