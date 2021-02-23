@@ -17,6 +17,15 @@
 #include "imgui\imgui_impl_win32.h"
 #include "ImGui\imgui_impl_dx11.h"
 
+//dx sdk dir
+#include <d3d9.h>
+#include "DXSDK\d3dx9.h"
+#if defined _M_X64
+#pragma comment(lib, "DXSDK/x64/d3dx9.lib") 
+#elif defined _M_IX86
+#pragma comment(lib, "DXSDK/x86/d3dx9.lib")
+#endif
+
 //DX Includes
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -221,7 +230,9 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			ImGui::SliderInt("find IndexCount", &countIndexCount, -1, 100);
 			ImGui::SliderInt("find veWidth", &countveWidth, -1, 100);
 			ImGui::SliderInt("find pscWidth", &countpscWidth, -1, 100);
+
 		}
+		ImGui::Checkbox("Dump Shader", &dumpshader);
 
 		ImGui::Checkbox("Wtsfinder", &wtsfinder);
 		if (wtsfinder == 1)
@@ -566,6 +577,68 @@ void __stdcall hookD3D11VSSetConstantBuffers(ID3D11DeviceContext* pContext, UINT
 
 //==========================================================================================================================
 
+static HRESULT(WINAPI* d3d11_CreatePixelShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11PixelShader**);
+static HRESULT(WINAPI* d3d11_CreateVertexShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11VertexShader**);
+static HRESULT(WINAPI* d3d11_CreateComputeShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11ComputeShader**);
+static HRESULT(WINAPI* d3d11_CreateHullShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11HullShader**);
+static HRESULT(WINAPI* d3d11_CreateDomainShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11DomainShader**);
+static HRESULT(WINAPI* d3d11_CreateGeometryShader)(ID3D11Device*, const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11GeometryShader**);
+static HRESULT(WINAPI* d3d11_CreateGeometryShaderWithStreamOutput)(ID3D11Device*, const void*, SIZE_T, const D3D11_SO_DECLARATION_ENTRY*, UINT, const UINT*, UINT, UINT, ID3D11ClassLinkage*, ID3D11GeometryShader**);
+
+
+static HRESULT WINAPI PixelShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11PixelShader** shader)
+{
+	//Log("A");
+	if (shader && dumpshader)
+		ShaderHook(pDevice, "ps", &bytecode, &length);
+	return d3d11_CreatePixelShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI VertexShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11VertexShader** shader)
+{
+	//Log("B");
+	if (shader && dumpshader)
+		ShaderHook(pDevice, "vs", &bytecode, &length);
+	return d3d11_CreateVertexShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI ComputeShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11ComputeShader** shader)
+{
+	if(shader)
+	ShaderHook(pDevice, "cs", &bytecode, &length);
+	return d3d11_CreateComputeShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI HullShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11HullShader** shader)
+{
+	if (shader)
+	ShaderHook(pDevice, "hs", &bytecode, &length);
+	return d3d11_CreateHullShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI DomainShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11DomainShader** shader)
+{
+	if (shader)
+	ShaderHook(pDevice, "ds", &bytecode, &length);
+	return d3d11_CreateDomainShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI GeometryShaderHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, ID3D11ClassLinkage* linkage, ID3D11GeometryShader** shader)
+{
+	if (shader)
+	ShaderHook(pDevice, "gs", &bytecode, &length);
+	return d3d11_CreateGeometryShader(pDevice, bytecode, length, linkage, shader);
+}
+
+static HRESULT WINAPI GeometryShaderWithStreamOutputHook(ID3D11Device* pDevice, const void* bytecode, SIZE_T length, const D3D11_SO_DECLARATION_ENTRY* entries, UINT entry_count, const UINT* strides, UINT stride_count, UINT stream, ID3D11ClassLinkage* linkage, ID3D11GeometryShader** shader)
+{
+	if (shader)
+	ShaderHook(pDevice, "gs", &bytecode, &length);
+	return d3d11_CreateGeometryShaderWithStreamOutput(pDevice, bytecode, length, entries, entry_count, strides, stride_count, stream, linkage, shader);
+}
+
+//==========================================================================================================================
+
 const int MultisampleCount = 1; // Set to 1 to disable multisampling
 LRESULT CALLBACK DXGIMsgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){ return DefWindowProc(hwnd, uMsg, wParam, lParam); }
 DWORD __stdcall InitializeHook(LPVOID)
@@ -668,6 +741,23 @@ DWORD __stdcall InitializeHook(LPVOID)
 	//if (MH_EnableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 	if (MH_CreateHook((DWORD_PTR*)pContextVTable[7], hookD3D11VSSetConstantBuffers, reinterpret_cast<void**>(&phookD3D11VSSetConstantBuffers)) != MH_OK) { return 1; }
 	if (MH_EnableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
+
+	//dump shader
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[15], PixelShaderHook, reinterpret_cast<void**>(&d3d11_CreatePixelShader)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[15]) != MH_OK) { return 1; }
+	if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[12], VertexShaderHook, reinterpret_cast<void**>(&d3d11_CreateVertexShader)) != MH_OK) { return 1; }
+	if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[12]) != MH_OK) { return 1; }
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[18], ComputeShaderHook, reinterpret_cast<void**>(&d3d11_CreateComputeShader)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[18]) != MH_OK) { return 1; }
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[16], HullShaderHook, reinterpret_cast<void**>(&d3d11_CreateHullShader)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[16]) != MH_OK) { return 1; }
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[17], DomainShaderHook, reinterpret_cast<void**>(&d3d11_CreateDomainShader)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[17]) != MH_OK) { return 1; }
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[13], GeometryShaderHook, reinterpret_cast<void**>(&d3d11_CreateGeometryShader)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[13]) != MH_OK) { return 1; }
+	//if (MH_CreateHook((DWORD_PTR*)pDeviceVTable[14], GeometryShaderWithStreamOutputHook, reinterpret_cast<void**>(&d3d11_CreateGeometryShaderWithStreamOutput)) != MH_OK) { return 1; }
+	//if (MH_EnableHook((DWORD_PTR*)pDeviceVTable[14]) != MH_OK) { return 1; }
+
 	
     DWORD dwOld;
     VirtualProtect(phookD3D11Present, 2, PAGE_EXECUTE_READWRITE, &dwOld);
@@ -707,6 +797,10 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 
 		//if (MH_DisableHook((DWORD_PTR*)pContextVTable[8]) != MH_OK) { return 1; }
 		if (MH_DisableHook((DWORD_PTR*)pContextVTable[7]) != MH_OK) { return 1; }
+
+		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[15]) != MH_OK) { return 1; }
+		if (MH_DisableHook((DWORD_PTR*)pDeviceVTable[12]) != MH_OK) { return 1; }
+
 		break;
 	}
 	return TRUE;

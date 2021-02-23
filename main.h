@@ -36,6 +36,7 @@ int countStride = -1;
 int countIndexCount = -1;
 int countveWidth = -1;
 int countpscWidth = -1;
+bool dumpshader = 0;
 bool wtsfinder = 1;
 
 int check_draw_result=0;
@@ -451,12 +452,52 @@ void AddModel(ID3D11DeviceContext * pContext)
 
 	if (method3 == 1)
 	{
-	 //
+		D3DXVECTOR4 out;
+		D3DXMATRIX pos = (float*)matProj;
+		D3DXMATRIX bonemat = (float*)matWorldView;
+		D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
+		//D3DXMatrixIdentity(&bonemat);
+
+		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
+		out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
+		out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
+		out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
+		out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
+			
+		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
+		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
+
+		float xx, yy;
+		xx = ((out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
+		yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
+		AimEspInfo.push_back(pAimEspInfo);
 	}
 
 	if (method4 == 1)
 	{
-	//
+		D3DXVECTOR4 out;
+		D3DXMATRIX pos = (float*)matProj;
+		D3DXMATRIX bonemat = (float*)matWorldView;
+		D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
+		//D3DXMatrixIdentity(&bonemat);
+
+		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
+		out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
+		out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
+		out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
+		out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
+
+		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
+		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
+
+		float xx, yy;
+		xx = (-(out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
+		yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
+		AimEspInfo.push_back(pAimEspInfo);
 	}
 
 }
@@ -517,4 +558,169 @@ void LoadCfg()
 	fin >> Word >> ProjCBnum;
 	fin >> Word >> matProjnum;
 	fin.close();
+}
+
+
+
+#define CHECK_FATAL(cond, msg) do { if (!(cond)) { MessageBoxA(NULL, msg, "FATAL ERROR", 0); ExitProcess(1); } } while (0)
+#define COUNTOF(arr) (sizeof(arr)/sizeof(0[arr]))
+
+
+#include <d3dcommon.h>
+
+
+
+
+
+
+static uint64_t FNV1a(const uint8_t* data, size_t size)
+{
+	uint64_t hash = 14695981039346656037ULL;
+	for (size_t i = 0; i < size; i++)
+	{
+		hash ^= data[i];
+		hash *= 1099511628211ULL;
+	}
+	return hash;
+}
+
+//static BOOL dump;
+static WCHAR d3d11_shaders[MAX_PATH];
+static void ShaderDump(const char* type, const char* ext, uint64_t id, const void* data, DWORD size)
+{
+	CreateDirectoryW(d3d11_shaders, NULL);
+
+	WCHAR path[1024];
+	//wsprintfW(path, L"D:\\dumpshader.hlsl", d3d11_shaders, type, id, ext);
+	wsprintfW(path, L"%s\\%S_%016I64x.%S", d3d11_shaders, type, id, ext);
+
+	HANDLE f = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (f != INVALID_HANDLE_VALUE)
+	{
+		DWORD written;
+		BOOL ok = WriteFile(f, data, size, &written, NULL);
+		if (!ok || written != size)
+		{
+			// TODO: report error
+			CHECK_FATAL(0, "Error writing to file!");
+		}
+		CloseHandle(f);
+	}
+	else
+	{
+		// TODO: report error
+		CHECK_FATAL(0, "Error creating output file!");
+	}
+}
+
+static void ShaderDisassemble(const char* type, uint64_t id, const void* bytecode, DWORD bytecode_size)
+{
+	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS | D3D_DISASM_ENABLE_INSTRUCTION_OFFSET;
+
+	ID3DBlob* blob;
+	HRESULT hr = D3DDisassemble(bytecode, bytecode_size, flags, "", &blob);
+	if (SUCCEEDED(hr))
+	{
+		// ID3D10Blob is same as ID3DBlob
+		//LPVOID buffer = ID3D10Blob_GetBufferPointer(blob); //C
+		LPVOID buffer = (DWORD*)blob->GetBufferPointer(); //C++
+
+		//SIZE_T buffer_size = ID3D10Blob_GetBufferSize(blob);
+		SIZE_T buffer_size = blob->GetBufferSize();
+
+		ShaderDump(type, "asm", id, buffer, (DWORD)buffer_size);
+
+		SAFE_RELEASE(blob);
+	}
+}
+
+static void ShaderHook(ID3D11Device* device, const char* type, const void** bytecode, SIZE_T* bytecode_size)
+{
+	//Log("1");
+	//uint64_t id = FNV1a(*bytecode, *bytecode_size);
+	//uint64_t id = FNV1a((uint8_t *)bytecode, *bytecode_size); //crashtown
+	uint64_t id = 1; 
+
+	//if (dump)
+	//{
+		//Log("2");
+		ShaderDump(type, "bin", id, *bytecode, (DWORD)*bytecode_size);
+		ShaderDisassemble(type, id, *bytecode, (DWORD)*bytecode_size);
+	//}
+
+	//Log("3");
+	WCHAR hlsl[1024];
+	//wsprintfW(hlsl, L"D:\\dumpshader.hlsl", d3d11_shaders, type, id);
+	wsprintfW(hlsl, L"%s\\%S_%016I64x.hlsl", d3d11_shaders, type, id);
+	//Log("4");
+	if (GetFileAttributesW(hlsl) != INVALID_FILE_ATTRIBUTES)
+	{
+		//Log("5");
+		//D3D_FEATURE_LEVEL level = ID3D11Device_GetFeatureLevel(device);
+		D3D_FEATURE_LEVEL level = device->GetFeatureLevel();
+
+		int version;
+		if (level == D3D_FEATURE_LEVEL_11_1 || level == D3D_FEATURE_LEVEL_11_0)
+		{
+			version = 50;
+		}
+		else if (level == D3D_FEATURE_LEVEL_10_1)
+		{
+			version = 41;
+		}
+		else if (level == D3D_FEATURE_LEVEL_10_0)
+		{
+			version = 40;
+		}
+		else
+		{
+			// TODO: report error
+			return;
+		}
+		
+		char target[16];
+		wsprintfA(target, "%s_%u_%u", type, version / 10, version % 10);
+
+		ID3DBlob* code = NULL;
+		ID3DBlob* error = NULL;
+
+		HRESULT hr = D3DCompileFromFile(hlsl, NULL, NULL, "main", target, D3DCOMPILE_OPTIMIZATION_LEVEL2 | D3DCOMPILE_WARNINGS_ARE_ERRORS, 0, &code, &error);
+
+		if (error != NULL)
+		{
+			WCHAR txt[1024];
+			//wsprintfW(txt, L"D:\\errorhlsl.txt", d3d11_shaders, type, id);
+			wsprintfW(txt, L"%s\\%S_%016I64x.hlsl.txt", d3d11_shaders, type, id);
+
+			//const void* error_data = ID3D10Blob_GetBufferPointer(error);
+			const void* error_data = (DWORD*)error->GetBufferPointer();
+
+			//DWORD error_size = (DWORD)ID3D10Blob_GetBufferSize(error);
+			DWORD error_size = error->GetBufferSize();
+
+			HANDLE f = CreateFileW(txt, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (f != INVALID_HANDLE_VALUE)
+			{
+				DWORD written;
+				BOOL ok = WriteFile(f, error_data, error_size, &written, NULL);
+				if (!ok || written != error_size)
+				{
+					// TODO: report error
+				}
+				CloseHandle(f);
+			}
+
+			SAFE_RELEASE(error);
+		}
+
+		if (SUCCEEDED(hr) && code != NULL)
+		{
+			// do not release code blob, small memory "leak", but whatever
+			//*bytecode = ID3D10Blob_GetBufferPointer(code);
+			*bytecode = (DWORD*)code->GetBufferPointer();
+
+			//*bytecode_size = ID3D10Blob_GetBufferSize(code);
+			*bytecode_size = code->GetBufferSize();
+		}
+	}
 }
