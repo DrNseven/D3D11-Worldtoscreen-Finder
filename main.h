@@ -452,27 +452,49 @@ void AddModel(ID3D11DeviceContext * pContext)
 
 	if (method3 == 1)
 	{
-		//D3DXVECTOR4 out;
-		//D3DXMATRIX pos = (float*)matProj;
-		//D3DXMATRIX bonemat = (float*)matWorldView;
-		//D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
-		//D3DXMatrixIdentity(&bonemat);
+		/*
+		//tab unity 2018
+		D3DXVECTOR3 from, to;
+		D3DXMATRIX mvp, world;
 
-		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
-		//out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
-		//out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
-		//out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
-		//out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
-			
-		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
-		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
+		D3DXMatrixMultiply(&mvp, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj); //dx11
+		//Device->GetVertexShaderConstantF(0, mvp, 4); //dx9
 
-		//float xx, yy;
-		//xx = ((out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
-		//yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+		float w = 0.0f;
+		//row major (dx)
+		//to[0] = mvp[0] * world._14 + mvp[1] * world._24 + mvp[2] * world._34 + mvp[3];
+		//to[1] = mvp[4] * world._14 + mvp[5] * world._24 + mvp[6] * world._34 + mvp[7];
+		//w = mvp[12] * world._14 + mvp[13] * world._24 + mvp[14] * world._34 + mvp[15];
 
-		//AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
-		//AimEspInfo.push_back(pAimEspInfo);
+		//column major (ogl)
+		to[0] = mvp[0] * world._14 + mvp[4] * world._24 + mvp[8] * world._34 + mvp[12];
+		to[1] = mvp[1] * world._14 + mvp[5] * world._24 + mvp[9] * world._34 + mvp[13];
+		to[2] = mvp[2] * world._14 + mvp[6] * world._24 + mvp[10] * world._34 + mvp[14];
+		w = mvp[3] * world._14 + mvp[7] * world._24 + mvp[11] * world._34 + mvp[15];
+
+		if (w > 0.01f)
+		{
+			float invw = 1.0f / w;
+			to[0] *= invw;
+			to[1] *= invw;
+
+			float x = ViewportWidth / 2.0f;
+			float y = ViewportHeight / 2.0f;
+
+			x += 0.5f * to[0] * ViewportWidth + 0.5f;
+			y += 0.5f * to[1] * ViewportHeight + 0.5f;//-
+			to[0] = x;
+			to[1] = y;
+		}
+		else
+		{
+			to[0] = -1.0f;
+			to[1] = -1.0f;
+		}
+
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(to[0]), static_cast<float>(to[1]), static_cast<float>(w) };
+		AimEspInfo.push_back(pAimEspInfo);
+		*/
 	}
 
 	if (method4 == 1)
