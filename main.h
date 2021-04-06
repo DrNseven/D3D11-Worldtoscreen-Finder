@@ -452,49 +452,40 @@ void AddModel(ID3D11DeviceContext * pContext)
 
 	if (method3 == 1)
 	{
-		/*
-		//tab unity 2018
-		D3DXVECTOR3 from, to;
-		D3DXMATRIX mvp, world;
+		//TAB worldtoscreen unity 2018
+		DirectX::XMVECTOR Pos = XMVectorSet(0.0f, aimheight, 0.0f, 1.0);
+		//DirectX::XMVECTOR Pos = XMVectorSet(0.0f, aimheight, preaim, 1.0);
+		DirectX::XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);//multipication order matters
 
-		D3DXMatrixMultiply(&mvp, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj); //dx11
-		//Device->GetVertexShaderConstantF(0, mvp, 4); //dx9
+		//normal
+		DirectX::XMMATRIX WorldViewProj = viewProjMatrix; //normal
 
-		float w = 0.0f;
-		//row major (dx)
-		//to[0] = mvp[0] * world._14 + mvp[1] * world._24 + mvp[2] * world._34 + mvp[3];
-		//to[1] = mvp[4] * world._14 + mvp[5] * world._24 + mvp[6] * world._34 + mvp[7];
-		//w = mvp[12] * world._14 + mvp[13] * world._24 + mvp[14] * world._34 + mvp[15];
+		float mx = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[0] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[0] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[0] + WorldViewProj.r[3].m128_f32[0];
+		float my = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[1] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[1] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[1] + WorldViewProj.r[3].m128_f32[1];
+		float mz = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[2] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[2] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[2] + WorldViewProj.r[3].m128_f32[2];
+		float mw = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[3] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[3] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[3] + WorldViewProj.r[3].m128_f32[3];
 
-		//column major (ogl)
-		to[0] = mvp[0] * world._14 + mvp[4] * world._24 + mvp[8] * world._34 + mvp[12];
-		to[1] = mvp[1] * world._14 + mvp[5] * world._24 + mvp[9] * world._34 + mvp[13];
-		to[2] = mvp[2] * world._14 + mvp[6] * world._24 + mvp[10] * world._34 + mvp[14];
-		w = mvp[3] * world._14 + mvp[7] * world._24 + mvp[11] * world._34 + mvp[15];
-
-		if (w > 0.01f)
+		if (mw > 1.0f)
 		{
-			float invw = 1.0f / w;
-			to[0] *= invw;
-			to[1] *= invw;
+			float invw = 1.0f / mw;
+			mx *= invw;
+			my *= invw;
 
 			float x = ViewportWidth / 2.0f;
 			float y = ViewportHeight / 2.0f;
 
-			x += 0.5f * to[0] * ViewportWidth + 0.5f;
-			y += 0.5f * to[1] * ViewportHeight + 0.5f;//-
-			to[0] = x;
-			to[1] = y;
+			x += 0.5f * mx * ViewportWidth + 0.5f;
+			y += 0.5f * my * ViewportHeight + 0.5f;//-
+			mx = x;
+			my = y;
 		}
 		else
 		{
-			to[0] = -1.0f;
-			to[1] = -1.0f;
+			mx = -1.0f;
+			my = -1.0f;
 		}
-
-		AimEspInfo_t pAimEspInfo = { static_cast<float>(to[0]), static_cast<float>(to[1]), static_cast<float>(w) };
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(mx), static_cast<float>(my), static_cast<float>(mw) };
 		AimEspInfo.push_back(pAimEspInfo);
-		*/
 	}
 
 	if (method4 == 1)
