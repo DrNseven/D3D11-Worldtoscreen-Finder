@@ -490,27 +490,28 @@ void AddModel(ID3D11DeviceContext * pContext)
 
 	if (method4 == 1)
 	{
-		//D3DXVECTOR4 out;
-		//D3DXMATRIX pos = (float*)matProj;
-		//D3DXMATRIX bonemat = (float*)matWorldView;
-		//D3DXMatrixMultiply(&pos, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
-		//D3DXMatrixIdentity(&bonemat);
+		/*
+		//new unity incomplete, todo: fix matrix is flipped
+		//1, 2, 43 
+		D3DXMATRIX matrix, m1;
+		D3DXVECTOR4 position;
+		D3DXVECTOR4 input;
+		D3DXMatrixMultiply(&matrix, (D3DXMATRIX*)matWorldView, (D3DXMATRIX*)matProj);
 
-		//bool MessiahMatrixAdd(DirectX::XMFLOAT3X4 bonemat, DirectX::XMFLOAT3X4 pos, Vector3 & out)
-		//out.x = (pos._11 * bonemat._32) + (pos._21 * bonemat._33) + (pos._31 * bonemat._34) + pos._41;
-		//out.y = (pos._12 * bonemat._32) + (pos._22 * bonemat._33) + (pos._32 * bonemat._34) + pos._42;
-		//out.z = (pos._13 * bonemat._32) + (pos._23 * bonemat._33) + (pos._33 * bonemat._34) + pos._43;
-		//out.w = (pos._14 * bonemat._32) + (pos._24 * bonemat._33) + (pos._34 * bonemat._34) + pos._44;
+		D3DXMatrixTranspose(&matrix, &matrix);
 
-		//float xx = (ViewportWidth / 2 * out.x) + (out.x + ViewportWidth / 2);
-		//float yy = -(ViewportHeight / 2 * out.y) + (out.y + ViewportHeight / 2);
+		position.x = input.x * matrix._11 + input.y * matrix._12 + input.z * matrix._13 + input.w * matrix._14;
+		position.y = input.x * matrix._21 + input.y * matrix._22 + input.z * matrix._23 + input.w * matrix._24;
+		position.z = input.x * matrix._31 + input.y * matrix._32 + input.z * matrix._33 + input.w * matrix._34;
+		position.w = input.x * matrix._41 + input.y * matrix._42 + input.z * matrix._43 + input.w * matrix._44;
 
-		//float xx, yy;
-		//xx = (-(out.x / out.w) * (ViewportWidth / 2)) + (ViewportWidth / 2);
-		//yy = (ViewportHeight / 2) + ((out.y / out.w) * (ViewportHeight / 2));
+		float xx, yy;
+		xx = ((position.x / position.w) * (ViewportWidth / 2.0f)) + (ViewportWidth / 2.0f);
+		yy = (ViewportHeight / 2.0f) + ((position.y / position.w) * (ViewportHeight / 2.0f));
 
-		//AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(out.z) };
-		//AimEspInfo.push_back(pAimEspInfo);
+		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(position.w) };
+		AimEspInfo.push_back(pAimEspInfo);
+		*/
 	}
 
 }
