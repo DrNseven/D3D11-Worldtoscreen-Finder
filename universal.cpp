@@ -243,19 +243,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 			ImGui::Checkbox("method3", &method3);
 			ImGui::Checkbox("method4", &method4);
 
-			DWORD dwTicks = GetTickCount();
-			if ((dwTicks - g_dwLastAction) >= 1000)
-			{
-				//reset buffer every second while bruteforcing values
-				//Log("do something if 1 second has passed");
-
-				//reset to avoid wrong values
-				pStageBufferA = NULL;
-				pStageBufferB = NULL;
-
-				//reset var to current ticks
-				g_dwLastAction = dwTicks;
-			}
 			//bruteforce
 			ImGui::SliderInt("WorldViewCBnum", &WorldViewCBnum, 0, 10);
 			ImGui::SliderInt("ProjCBnum", &ProjCBnum, 0, 10);
@@ -804,6 +791,11 @@ BOOL __stdcall DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 		break;
 	}
 	return TRUE;
+}
+
+// Exporting function usable with SetWindowsHookEx
+extern "C" __declspec(dllexport) int NextHook(int code, WPARAM wParam, LPARAM lParam) {
+	return CallNextHookEx(NULL, code, wParam, lParam);
 }
 
 /*
