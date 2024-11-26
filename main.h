@@ -252,180 +252,146 @@ struct vec4
 	float x, y, z, w;
 };
 
-void MapBuffer(ID3D11Buffer * pStageBuffer, void** ppData, UINT * pByteWidth)
-{
-	D3D11_MAPPED_SUBRESOURCE subRes;
-	HRESULT res = pContext->Map(pStageBuffer, 0, D3D11_MAP_READ, 0, &subRes);
+#include <wrl/client.h> // For ComPtr
 
-	D3D11_BUFFER_DESC desc;
-	pStageBuffer->GetDesc(&desc);
+// Convenience macros
+#define SAFE_RELEASE(p) if (p) { (p)->Release(); (p) = nullptr; }
 
-	if (FAILED(res))
-	{
-		//Log("Map stage buffer failed {%d} {%d} {%d} {%d} {%d}", (void*)pStageBuffer, desc.ByteWidth, desc.BindFlags, desc.CPUAccessFlags, desc.Usage);
-		SAFE_RELEASE(pStageBuffer); return;
-	}
-	
-	*ppData = subRes.pData;
-	
-	if (pByteWidth)
-		*pByteWidth = desc.ByteWidth;
-}
+// Using smart pointers to manage COM objects
+using Microsoft::WRL::ComPtr;
 
-void UnmapBuffer(ID3D11Buffer * pStageBuffer)
-{
-	pContext->Unmap(pStageBuffer, 0);
-}
+// Function prototypes
+void MapBuffer(ID3D11Buffer* pStageBuffer, void** ppData, UINT* pByteWidth);
+void UnmapBuffer(ID3D11Buffer* pStageBuffer);
+ComPtr<ID3D11Buffer> CopyBufferToCpu(ID3D11Buffer* pBuffer);
 
-ID3D11Buffer* pStageBufferA = NULL;
-ID3D11Buffer* CopyBufferToCpuA(ID3D11Buffer * pBufferA)
-{
-	D3D11_BUFFER_DESC CBDescA;
-	pBufferA->GetDesc(&CBDescA);
+float GetDst(float Xx, float Yy, float xX, float yY);
+void AddModel(ID3D11DeviceContext* pContext);
 
-	if (pStageBufferA == NULL)
-	{
-		//Log("onceA");
-		// create buffer
-		D3D11_BUFFER_DESC descA;
-		descA.BindFlags = 0;
-		descA.ByteWidth = CBDescA.ByteWidth;
-		descA.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-		descA.MiscFlags = 0;
-		descA.StructureByteStride = 0;
-		descA.Usage = D3D11_USAGE_STAGING;
-
-		if (FAILED(pDevice->CreateBuffer(&descA, NULL, &pStageBufferA)))
-		{
-			//Log("CreateBuffer failed when CopyBufferToCpuA {}");
-		}
-	}
-
-	if (pStageBufferA != NULL)
-		pContext->CopyResource(pStageBufferA, pBufferA);
-
-	return pStageBufferA;
-}
-
-ID3D11Buffer* pStageBufferB = NULL;
-ID3D11Buffer* CopyBufferToCpuB(ID3D11Buffer * pBufferB)
-{
-	D3D11_BUFFER_DESC CBDescB;
-	pBufferB->GetDesc(&CBDescB);
-
-	if (pStageBufferB == NULL)
-	{
-		//Log("onceB");
-		// create buffer
-		D3D11_BUFFER_DESC descB;
-		descB.BindFlags = 0;
-		descB.ByteWidth = CBDescB.ByteWidth;
-		descB.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-		descB.MiscFlags = 0;
-		descB.StructureByteStride = 0;
-		descB.Usage = D3D11_USAGE_STAGING;
-
-		if (FAILED(pDevice->CreateBuffer(&descB, NULL, &pStageBufferB)))
-		{
-			//Log("CreateBuffer failed when CopyBufferToCpuB {}");
-		}
-	}
-
-	if (pStageBufferB != NULL)
-		pContext->CopyResource(pStageBufferB, pBufferB);
-
-	return pStageBufferB;
-}
-
-//get distance
-float GetDst(float Xx, float Yy, float xX, float yY)
-{
-	return sqrt((yY - Yy) * (yY - Yy) + (xX - Xx) * (xX - Xx));
-}
-
-struct AimEspInfo_t
-{
+// Data structures
+struct AimEspInfo_t {
 	float vOutX, vOutY, vOutZ;
 	float CrosshairDst;
 };
-std::vector<AimEspInfo_t>AimEspInfo;
 
-
-//w2s
-int WorldViewCBnum = 2; //2
-int ProjCBnum = 1;//1
-int matProjnum = 16;//16
-
-ID3D11Buffer* pWorldViewCB = nullptr;
-ID3D11Buffer* pProjCB = nullptr;
-
-ID3D11Buffer* m_pCurWorldViewCB = NULL;
-ID3D11Buffer* m_pCurProjCB = NULL;
+// Globals
+std::vector<AimEspInfo_t> AimEspInfo;
 
 float matWorldView[4][4];
 float matProj[4][4];
 
-float* worldview;
-float* proj;
+float* worldview = nullptr;
+float* proj = nullptr;
 
-void AddModel(ID3D11DeviceContext * pContext)
-{
-	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, &pWorldViewCB);	//WorldViewCBnum
-	pContext->VSGetConstantBuffers(ProjCBnum, 1, &pProjCB);				//ProjCBnum
-
-	if (pWorldViewCB == nullptr)
-	{
-		SAFE_RELEASE(pWorldViewCB); return;
-	}
-	if (pProjCB == nullptr)
-	{
-		SAFE_RELEASE(pProjCB); return;
+// Functions
+void MapBuffer(ID3D11Buffer* pStageBuffer, void** ppData, UINT* pByteWidth) {
+	if (!pStageBuffer || !ppData) {
+		Log("Invalid parameters passed to MapBuffer\n");
+		return;
 	}
 
-	if (pWorldViewCB != nullptr && pProjCB != nullptr)
-	{
-		m_pCurWorldViewCB = CopyBufferToCpuA(pWorldViewCB);
-		m_pCurProjCB = CopyBufferToCpuB(pProjCB);
+	D3D11_MAPPED_SUBRESOURCE subRes = {};
+	HRESULT res = pContext->Map(pStageBuffer, 0, D3D11_MAP_READ, 0, &subRes);
+	if (FAILED(res)) {
+		Log("Map failed: HRESULT 0x%08X\n", res);
+		return;
 	}
 
-	if (m_pCurWorldViewCB == nullptr)
-	{
-		SAFE_RELEASE(m_pCurWorldViewCB); return;
+	*ppData = subRes.pData;
+
+	if (pByteWidth) {
+		D3D11_BUFFER_DESC desc = {};
+		pStageBuffer->GetDesc(&desc);
+		*pByteWidth = desc.ByteWidth;
 	}
-	if (m_pCurProjCB == nullptr)
-	{
-		SAFE_RELEASE(m_pCurProjCB); return;
+}
+
+void UnmapBuffer(ID3D11Buffer* pStageBuffer) {
+	if (pStageBuffer) {
+		pContext->Unmap(pStageBuffer, 0);
 	}
-	
-	if (m_pCurWorldViewCB != nullptr && m_pCurProjCB != nullptr)
-	{
-		MapBuffer(m_pCurWorldViewCB, (void**)&worldview, NULL);
-		memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
-		UnmapBuffer(m_pCurWorldViewCB);
-		MapBuffer(m_pCurProjCB, (void**)&proj, NULL);
-		memcpy(matProj, &proj[matProjnum], sizeof(matProj));			//matProjnum
-		UnmapBuffer(m_pCurProjCB);
+}
+
+ComPtr<ID3D11Buffer> CopyBufferToCpu(ID3D11Buffer* pBuffer) {
+	if (!pBuffer) return nullptr;
+
+	D3D11_BUFFER_DESC desc = {};
+	pBuffer->GetDesc(&desc);
+
+	D3D11_BUFFER_DESC stagingDesc = desc;
+	stagingDesc.BindFlags = 0;
+	stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	stagingDesc.Usage = D3D11_USAGE_STAGING;
+
+	ComPtr<ID3D11Buffer> pStagingBuffer;
+	if (FAILED(pDevice->CreateBuffer(&stagingDesc, nullptr, &pStagingBuffer))) {
+		Log("Failed to create staging buffer\n");
+		return nullptr;
 	}
 
+	if (pStagingBuffer != NULL)
+		pContext->CopyResource(pStagingBuffer.Get(), pBuffer);
+	return pStagingBuffer;
+}
 
-	if(method1==1)
+float GetDst(float Xx, float Yy, float xX, float yY) {
+	return std::sqrt((yY - Yy) * (yY - Yy) + (xX - Xx) * (xX - Xx));
+}
+
+//w2s
+int WorldViewCBnum = 2; //1
+int ProjCBnum = 1;//2
+int matProjnum = 16;//16
+
+void AddModel(ID3D11DeviceContext* pContext) {
+	ComPtr<ID3D11Buffer> pWorldViewCB, pProjCB;
+	pContext->VSGetConstantBuffers(WorldViewCBnum, 1, pWorldViewCB.GetAddressOf()); // WorldViewCBnum
+	pContext->VSGetConstantBuffers(ProjCBnum, 1, pProjCB.GetAddressOf()); // ProjCBnum
+
+	if (!pWorldViewCB || !pProjCB) return;
+
+	ComPtr<ID3D11Buffer> m_pCurWorldViewCB = CopyBufferToCpu(pWorldViewCB.Get());
+	ComPtr<ID3D11Buffer> m_pCurProjCB = CopyBufferToCpu(pProjCB.Get());
+
+	if (!m_pCurWorldViewCB || !m_pCurProjCB) return;
+
+	MapBuffer(m_pCurWorldViewCB.Get(), (void**)&worldview, nullptr);
+	std::memcpy(matWorldView, &worldview[0], sizeof(matWorldView));
+	UnmapBuffer(m_pCurWorldViewCB.Get());
+
+	MapBuffer(m_pCurProjCB.Get(), (void**)&proj, nullptr);
+	std::memcpy(matProj, &proj[matProjnum], sizeof(matProj)); // matProjnum
+	UnmapBuffer(m_pCurProjCB.Get());
+
+	if (method1 == 1)
 	{
-		DirectX::XMVECTOR Pos = XMVectorSet(0.0f, 0.0f, aimheight, 1.0f);
-		DirectX::XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply((FXMMATRIX)*matWorldView, (FXMMATRIX)*matProj);//multipication order matters
+		DirectX::XMVECTOR Pos = DirectX::XMVectorSet(0.0f, 0.0f, aimheight, 1.0f);
+		DirectX::XMMATRIX viewProjMatrix = DirectX::XMMatrixMultiply(
+			DirectX::XMLoadFloat4x4(reinterpret_cast<DirectX::XMFLOAT4X4*>(matWorldView)),
+			DirectX::XMLoadFloat4x4(reinterpret_cast<DirectX::XMFLOAT4X4*>(matProj))
+		);
 
-		//normal
-		DirectX::XMMATRIX WorldViewProj = viewProjMatrix; //normal
+		DirectX::XMMATRIX WorldViewProj = viewProjMatrix;
 
-		float mx = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[0] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[0] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[0] + WorldViewProj.r[3].m128_f32[0];
-		float my = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[1] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[1] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[1] + WorldViewProj.r[3].m128_f32[1];
-		float mz = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[2] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[2] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[2] + WorldViewProj.r[3].m128_f32[2];
-		float mw = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[3] + Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[3] + Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[3] + WorldViewProj.r[3].m128_f32[3];
+		float mx = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[0] +
+			Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[0] +
+			Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[0] +
+			WorldViewProj.r[3].m128_f32[0];
 
-		float xx, yy;
-		xx = ((mx / mw) * (ViewportWidth / 2.0f)) + (ViewportWidth / 2.0f);
-		yy = (ViewportHeight / 2.0f) - ((my / mw) * (ViewportHeight / 2.0f)); //- or + depends on the game
+		float my = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[1] +
+			Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[1] +
+			Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[1] +
+			WorldViewProj.r[3].m128_f32[1];
 
-		AimEspInfo_t pAimEspInfo = { static_cast<float>(xx), static_cast<float>(yy), static_cast<float>(mw) };
+		float mw = Pos.m128_f32[0] * WorldViewProj.r[0].m128_f32[3] +
+			Pos.m128_f32[1] * WorldViewProj.r[1].m128_f32[3] +
+			Pos.m128_f32[2] * WorldViewProj.r[2].m128_f32[3] +
+			WorldViewProj.r[3].m128_f32[3];
+
+		float xx = ((mx / mw) * (ViewportWidth / 2.0f)) + (ViewportWidth / 2.0f);
+		float yy = (ViewportHeight / 2.0f) - ((my / mw) * (ViewportHeight / 2.0f));
+
+		AimEspInfo_t pAimEspInfo = { xx, yy, mw };
 		AimEspInfo.push_back(pAimEspInfo);
 	}
 
